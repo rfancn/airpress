@@ -1,8 +1,8 @@
 <p align="center">
-   <img width="170" src="https://raw.githubusercontent.com/go-sonic/resources/master/logo/logo.svg" />
+   <img width="360" src="https://raw.githubusercontent.com/rfancn/airpress/main/resources/admin/images/logo.png" />
 </p>
 
-<p align="center"><b>AirPress </b> 是一个用Golang开发的博客平台，高效快速.</p>
+<p align="center"><b>AirPress </b> 是一个用Golang开发的轻量级CMS平台，高效快速.</p>
 
 <p align="center"><a href="https://github.com/go-sonic/sonic">go-sonic/sonic</a> 的社区维护分支</p>
 
@@ -19,7 +19,7 @@
 
 ## 📖 介绍
 
-AirPress 致力于成为高效快速的开源博客平台。
+AirPress 致力于成为高效快速的开源CMS平台。
 
 ## 🔀 关于本项目
 
