@@ -1,5 +1,5 @@
 <p align="center">
-   <img width="170" src="https://raw.githubusercontent.com/go-sonic/resources/master/logo/logo.svg" />
+   <img width="170" src="https://raw.githubusercontent.com/rfancn/airpress/main/resources/admin/images/logo.png" />
 </p>
 
 <p align="center"><b>AirPress </b> is a Go Blogging Platform. Simple and Powerful.</p>
