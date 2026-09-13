@@ -1,0 +1,49 @@
+run:
+  timeout: 5m
+  skip-files:
+    - .gen.go
+    - .pb.go
+
+issues:
+  new: false
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - asasalint 
+    - asciicheck
+    - bodyclose
+    - decorder
+    - dogsled
+    - errname
+    - errorlint
+    - gocritic
+    - gofmt
+    - gofumpt
+    - goimports
+    - misspell
+    - nakedret
+    - revive
+    - prealloc
+    - stylecheck
+    - unconvert
+    - unparam
+    - whitespace
+    - usestdlibvars
+    - wastedassign
+
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/rfancn/airpress
+  revive:
+    rules:
+      - name: blank-imports
+        severity: warning
+        disabled: true
