@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/rfancn/airpress/consts"
 	"github.com/rfancn/airpress/util"
@@ -19,25 +20,26 @@ func NewConfig() *Config {
 	flag.StringVar(&configFile, "config", "", "")
 	flag.Parse()
 
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.SetConfigType("yaml")
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
-	} else {
-		viper.AddConfigPath("./conf/")
-		viper.SetConfigName("config")
+	// 未指定 -config 时，默认加载 ./conf/config.yaml
+	if configFile == "" {
+		configFile = filepath.Join(".", "conf", "config.yaml")
 	}
 
-	viper.SetDefault("airpress.admin_url_path", "admin")
+	k := koanf.New(".")
+	if err := k.Load(file.Provider(configFile), yaml.Parser()); err != nil {
+		panic(err)
+	}
 
 	conf := &Config{}
-	if err := viper.ReadInConfig(); err != nil {
+	// koanf 默认反序列化 tag 为 "koanf"，这里沿用 config/model.go 中已有的 mapstructure tag，
+	// 避免改动模型结构体
+	if err := k.UnmarshalWithConf("", conf, koanf.UnmarshalConf{Tag: "mapstructure"}); err != nil {
 		panic(err)
 	}
-	if err := viper.Unmarshal(conf); err != nil {
-		panic(err)
+
+	// admin_url_path 默认值兜底（对应原 viper.SetDefault 语义）
+	if conf.AirPress.AdminURLPath == "" {
+		conf.AirPress.AdminURLPath = "admin"
 	}
 
 	if conf.AirPress.WorkDir == "" {

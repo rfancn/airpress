@@ -28,9 +28,9 @@ func (j *journalCommentServiceImpl) UpdateBy(ctx context.Context, commentID int3
 	if commentID == 0 {
 		return nil, nil
 	}
-	comment := j.BaseCommentService.ConvertParam(commentParam)
+	comment := j.ConvertParam(commentParam)
 	comment.ID = commentID
-	return j.BaseCommentService.Update(ctx, comment)
+	return j.Update(ctx, comment)
 }
 
 func (j *journalCommentServiceImpl) CountByStatus(ctx context.Context, status consts.CommentStatus) (int64, error) {

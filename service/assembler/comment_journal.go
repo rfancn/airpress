@@ -45,7 +45,7 @@ func (j *journalCommentAssembler) ConvertToWithJournal(ctx context.Context, comm
 	}
 	result := make([]*vo.JournalCommentWithJournal, 0, len(comments))
 	for _, comment := range comments {
-		commentDTO, err := j.BaseCommentAssembler.ConvertToDTO(ctx, comment)
+		commentDTO, err := j.ConvertToDTO(ctx, comment)
 		if err != nil {
 			return nil, err
 		}

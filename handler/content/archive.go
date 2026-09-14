@@ -69,12 +69,13 @@ func (a *ArchiveHandler) ArchivesBySlug(ctx *gin.Context, model template.Model) 
 		return "", err
 	}
 	var post *entity.Post
-	if postPermalinkType == consts.PostPermalinkTypeDefault {
+	switch postPermalinkType {
+	case consts.PostPermalinkTypeDefault:
 		post, err = a.PostService.GetBySlug(ctx, slug)
 		if err != nil {
 			return "", err
 		}
-	} else if postPermalinkType == consts.PostPermalinkTypeID {
+	case consts.PostPermalinkTypeID:
 		postID, err := strconv.ParseInt(slug, 10, 32)
 		if err != nil {
 			return "", err
@@ -111,12 +112,13 @@ func (a *ArchiveHandler) AdminArchivesBySlug(ctx *gin.Context, model template.Mo
 		return "", err
 	}
 	var post *entity.Post
-	if postPermalinkType == consts.PostPermalinkTypeDefault {
+	switch postPermalinkType {
+	case consts.PostPermalinkTypeDefault:
 		post, err = a.PostService.GetBySlug(ctx, slug)
 		if err != nil {
 			return "", err
 		}
-	} else if postPermalinkType == consts.PostPermalinkTypeID {
+	case consts.PostPermalinkTypeID:
 		postID, err := strconv.ParseInt(slug, 10, 32)
 		if err != nil {
 			return "", err

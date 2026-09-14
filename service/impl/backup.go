@@ -190,7 +190,7 @@ func (b *backupServiceImpl) ExportData(ctx context.Context) (*dto.BackupDTO, err
 	if err != nil {
 		return nil, xerr.NoType.Wrap(err).WithMsg("get fileInfo")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	content, err := json.Marshal(data)
 	if err != nil {
 		return nil, xerr.NoType.Wrap(err).WithStatus(xerr.StatusInternalServerError).WithMsg("json marshal err")

@@ -27,7 +27,7 @@ func (l *LinkHandler) ListLinks(ctx *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	if p.Sort == nil || len(p.Sort.Fields) == 0 {
+	if p.Sort == nil || len(p.Fields) == 0 {
 		p.Sort = &param.Sort{
 			Fields: []string{"createTime,desc"},
 		}
@@ -45,7 +45,7 @@ func (l *LinkHandler) LinkTeamVO(ctx *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	if p.Sort == nil || len(p.Sort.Fields) == 0 {
+	if p.Sort == nil || len(p.Fields) == 0 {
 		p.Sort = &param.Sort{
 			Fields: []string{"createTime,desc"},
 		}

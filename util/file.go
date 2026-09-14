@@ -72,7 +72,7 @@ func ZipFile(dst string, srcs ...string) (err error) {
 			if err != nil {
 				return err
 			}
-			defer fr.Close()
+			defer func() { _ = fr.Close() }()
 
 			// 将打开的文件 Copy 到 w
 			_, err = io.Copy(w, fr)
@@ -95,7 +95,7 @@ func Unzip(src string, dest string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	filenames := make([]string, 0, len(r.File))
 	for _, f := range r.File {
@@ -136,8 +136,8 @@ func Unzip(src string, dest string) ([]string, error) {
 		_, err = io.Copy(outFile, rc)
 
 		// Close the file without defer to close before next iteration of loop
-		outFile.Close()
-		rc.Close()
+		_ = outFile.Close()
+		_ = rc.Close()
 
 		if err != nil {
 			return filenames, err
@@ -196,7 +196,7 @@ func CopyFile(src, des string) (written int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	fi, _ := srcFile.Stat()
 	perm := fi.Mode()
@@ -205,7 +205,7 @@ func CopyFile(src, des string) (written int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	defer desFile.Close()
+	defer func() { _ = desFile.Close() }()
 
 	return io.Copy(desFile, srcFile)
 }

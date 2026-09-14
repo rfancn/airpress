@@ -72,7 +72,7 @@ func (ce *customError) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", ce.Cause())
+			_, _ = fmt.Fprintf(s, "%+v\n", ce.Cause())
 			_, _ = io.WriteString(s, ce.msg)
 			return
 		}

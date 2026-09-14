@@ -41,9 +41,10 @@ func (s *StartListener) HandleEvent(ctx context.Context, startEvent event.Event)
 	if err != nil {
 		log.Error("create options err", zap.Error(err))
 	}
-	if dal.DBType == consts.DBTypeMySQL {
+	switch dal.DBType {
+	case consts.DBTypeMySQL:
 		err = dal.DB.Session(&gorm.Session{Context: ctx}).Raw("SELECT VERSION()").Scan(&consts.DatabaseVersion).Error
-	} else if dal.DBType == consts.DBTypeSQLite {
+	case consts.DBTypeSQLite:
 		err = dal.DB.Session(&gorm.Session{Context: ctx}).Raw("SELECT SQLITE_VERSION()").Scan(&consts.DatabaseVersion).Error
 	}
 	if err != nil {

@@ -61,7 +61,7 @@ func (a *Aliyun) Upload(ctx context.Context, fileHeader *multipart.FileHeader) (
 	if err != nil {
 		return nil, xerr.WithStatus(err, xerr.StatusInternalServerError).WithMsg("open upload file error")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	err = aliyunClientInstance.Bucket.PutObject(fd.getRelativePath(), file)
 	if err != nil {
 		return nil, xerr.WithMsg(err, "upload to aliyun oss error: "+err.Error()).WithStatus(xerr.StatusInternalServerError)

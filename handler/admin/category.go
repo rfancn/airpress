@@ -45,7 +45,7 @@ func (c *CategoryHandler) ListAllCategory(ctx *gin.Context) (interface{}, error)
 	if err != nil {
 		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
 	}
-	if categoryQuery.Sort == nil || len(categoryQuery.Sort.Fields) == 0 {
+	if categoryQuery.Sort == nil || len(categoryQuery.Fields) == 0 {
 		categoryQuery.Sort = &param.Sort{Fields: []string{"priority,asc"}}
 	}
 	if categoryQuery.More != nil && *categoryQuery.More {

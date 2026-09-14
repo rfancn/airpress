@@ -48,7 +48,7 @@ func (p *postCommentAssembler) ConvertToWithPost(ctx context.Context, comments [
 	}
 	result := make([]*vo.PostCommentWithPost, 0, len(comments))
 	for _, comment := range comments {
-		commentDTO, err := p.BaseCommentAssembler.ConvertToDTO(ctx, comment)
+		commentDTO, err := p.ConvertToDTO(ctx, comment)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func (p *postCommentAssembler) ConvertToWithPost(ctx context.Context, comments [
 		result = append(result, commentWithPost)
 		post, ok := posts[comment.PostID]
 		if ok {
-			commentWithPost.Post, err = p.PostAssembler.ConvertToMinimalDTO(ctx, post)
+			commentWithPost.Post, err = p.ConvertToMinimalDTO(ctx, post)
 			if err != nil {
 				return nil, err
 			}

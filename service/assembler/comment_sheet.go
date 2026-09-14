@@ -48,7 +48,7 @@ func (p *sheetCommentAssembler) ConvertToWithSheet(ctx context.Context, comments
 	}
 	result := make([]*vo.SheetCommentWithSheet, 0, len(comments))
 	for _, comment := range comments {
-		commentDTO, err := p.BaseCommentAssembler.ConvertToDTO(ctx, comment)
+		commentDTO, err := p.ConvertToDTO(ctx, comment)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func (p *sheetCommentAssembler) ConvertToWithSheet(ctx context.Context, comments
 		result = append(result, commentWithSheet)
 		sheet, ok := sheets[comment.PostID]
 		if ok {
-			commentWithSheet.PostMinimal, err = p.SheetAssembler.ConvertToMinimalDTO(ctx, sheet)
+			commentWithSheet.PostMinimal, err = p.ConvertToMinimalDTO(ctx, sheet)
 			if err != nil {
 				return nil, err
 			}

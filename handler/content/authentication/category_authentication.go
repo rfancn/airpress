@@ -38,7 +38,8 @@ func (c *CategoryAuthentication) Authenticate(ctx context.Context, token string,
 	if category.Password == "" && category.ParentID == 0 {
 		return "", nil
 	}
-	if category.Password == "" {
+	switch category.Password {
+	case "":
 		categories, err := c.CategoryService.ListAll(ctx, nil)
 		if err != nil {
 			return "", err
@@ -64,7 +65,7 @@ func (c *CategoryAuthentication) Authenticate(ctx context.Context, token string,
 				return "", xerr.WithMsg(nil, "密码不正确").WithStatus(http.StatusUnauthorized)
 			}
 		}
-	} else if category.Password == password {
+	case password:
 		return c.doAuthenticate(ctx, token, id)
 	}
 	return "", xerr.WithMsg(nil, "密码不正确").WithStatus(http.StatusUnauthorized)

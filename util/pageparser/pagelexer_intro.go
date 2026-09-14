@@ -81,20 +81,20 @@ func lexFrontMatterJSON(l *pageLexer) stateFunc {
 	for {
 		r := l.next()
 
-		switch {
-		case r == eof:
+		switch r {
+		case eof:
 			return l.errorf("unexpected EOF parsing JSON front matter")
-		case r == '{':
+		case '{':
 			if !inQuote {
 				level++
 			}
-		case r == '}':
+		case '}':
 			if !inQuote {
 				level--
 			}
-		case r == '"':
+		case '"':
 			inQuote = !inQuote
-		case r == '\\':
+		case '\\':
 			// This may be an escaped quote. Make sure it's not marked as a
 			// real one.
 			l.next()
@@ -131,12 +131,12 @@ LOOP:
 	for {
 		r := l.next()
 
-		switch {
-		case r == '\n':
+		switch r {
+		case '\n':
 			if !l.hasPrefix(delimOrg) {
 				break LOOP
 			}
-		case r == eof:
+		case eof:
 			break LOOP
 		}
 	}

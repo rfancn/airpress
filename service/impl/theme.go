@@ -160,7 +160,7 @@ func (t *themeServiceImpl) UpdateThemeFile(ctx context.Context, themeID, absPath
 	if err != nil {
 		return xerr.WithMsg(err, "open file error")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	_, err = file.WriteString(content)
 	if err != nil {
 		return xerr.WithMsg(err, "write to file err")

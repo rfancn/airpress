@@ -79,7 +79,8 @@ func (c *CommentListener) HandleCommentNew(ctx context.Context, ce event.Event) 
 	data := make(map[string]interface{})
 	var subject string
 
-	if comment.Type == consts.CommentTypePost || comment.Type == consts.CommentTypeSheet {
+	switch comment.Type {
+	case consts.CommentTypePost, consts.CommentTypeSheet:
 		post, err := c.PostService.GetByPostID(ctx, commentEvent.Comment.PostID)
 		if err != nil {
 			return nil
@@ -101,7 +102,7 @@ func (c *CommentListener) HandleCommentNew(ctx context.Context, ce event.Event) 
 		} else {
 			subject = "Your blog page 《" + postDTO.Title + "》 has a new comment"
 		}
-	} else if comment.Type == consts.CommentTypeJournal {
+	case consts.CommentTypeJournal:
 		journalPrefix, err := c.OptionService.GetJournalPrefix(ctx)
 		if err != nil {
 			return err
@@ -184,7 +185,8 @@ func (c *CommentListener) HandleCommentReply(ctx context.Context, ce event.Event
 
 	data := make(map[string]interface{})
 	var subject string
-	if comment.Type == consts.CommentTypePost || comment.Type == consts.CommentTypeSheet {
+	switch comment.Type {
+	case consts.CommentTypePost, consts.CommentTypeSheet:
 		post, err := c.PostService.GetByPostID(ctx, commentEvent.Comment.PostID)
 		if err != nil {
 			return nil
@@ -209,7 +211,7 @@ func (c *CommentListener) HandleCommentReply(ctx context.Context, ce event.Event
 		} else {
 			subject = "You have a new reply in the 《" + post.Title + "》 page you comment on " + blogTitle.(string)
 		}
-	} else if comment.Type == consts.CommentTypeJournal {
+	case consts.CommentTypeJournal:
 		blogBaseURL, err := c.OptionService.GetBlogBaseURL(ctx)
 		if err != nil {
 			return err
