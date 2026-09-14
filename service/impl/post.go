@@ -132,7 +132,7 @@ func (p postServiceImpl) Update(ctx context.Context, postID int32, postParam *pa
 	if err != nil {
 		return nil, err
 	}
-	if postToUpdate.CreateTime == (time.Time{}) {
+	if postToUpdate.CreateTime.Equal(time.Time{}) {
 		postToUpdate.CreateTime = post.CreateTime
 	}
 	postToUpdate.ID = post.ID

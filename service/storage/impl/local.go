@@ -70,7 +70,7 @@ func (l *LocalFileStorage) Upload(ctx context.Context, fileHeader *multipart.Fil
 	if err != nil {
 		return nil, xerr.WithMsg(err, "Upload file error")
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	out, err := os.Create(fd.getFullPath())
 	if os.IsExist(err) {
@@ -78,7 +78,7 @@ func (l *LocalFileStorage) Upload(ctx context.Context, fileHeader *multipart.Fil
 	} else if err != nil {
 		return nil, xerr.WithMsg(err, "Upload file error")
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	defer func() {
 		if err != nil {
 			_ = l.Delete(ctx, fd.getFullPath())

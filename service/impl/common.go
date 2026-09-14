@@ -46,7 +46,7 @@ func BuildSort(sort *param.Sort, dalStruct interface{}, dalDO interface{}) error
 	}
 
 	rDO := reflect.ValueOf(dalDO)
-	if rDO.Kind() != reflect.Ptr {
+	if rDO.Kind() != reflect.Pointer {
 		panic("not pointer type")
 	}
 	do := rDO.Elem()

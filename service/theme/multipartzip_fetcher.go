@@ -38,7 +38,7 @@ func (m *multipartZipThemeFetcherImpl) FetchTheme(ctx context.Context, file inte
 	if err != nil {
 		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("upload theme file error")
 	}
-	defer srcThemeFile.Close()
+	defer func() { _ = srcThemeFile.Close() }()
 
 	fileName := themeFileHeader.Filename
 	if !strings.HasSuffix(fileName, ".zip") {
@@ -58,7 +58,7 @@ func (m *multipartZipThemeFetcherImpl) FetchTheme(ctx context.Context, file inte
 		return nil, xerr.WithStatus(err, xerr.StatusInternalServerError).WithMsg("create file error")
 	}
 
-	defer diskFile.Close()
+	defer func() { _ = diskFile.Close() }()
 
 	_, err = io.Copy(diskFile, srcThemeFile)
 	if err != nil {

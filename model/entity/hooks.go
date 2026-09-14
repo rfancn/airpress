@@ -129,7 +129,7 @@ func (m *Photo) BeforeUpdate(tx *gorm.DB) (err error) {
 // ----------------------- Post -------------------------
 
 func (m *Post) BeforeCreate(tx *gorm.DB) (err error) {
-	if m.CreateTime == (time.Time{}) {
+	if m.CreateTime.Equal(time.Time{}) {
 		m.CreateTime = time.Now()
 	}
 	return nil

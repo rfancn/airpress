@@ -120,7 +120,7 @@ func (s sheetServiceImpl) Update(ctx context.Context, sheetID int32, sheetParam 
 	}
 	sheetToUpdate.ID = sheet.ID
 	sheetToUpdate.Type = sheet.Type
-	if sheetToUpdate.CreateTime == (time.Time{}) {
+	if sheetToUpdate.CreateTime.Equal(time.Time{}) {
 		sheetToUpdate.CreateTime = sheet.CreateTime
 	}
 	sheetToUpdate.CreateTime = sheet.CreateTime

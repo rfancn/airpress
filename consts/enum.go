@@ -219,9 +219,10 @@ const (
 )
 
 func (m MFAType) MarshalJSON() ([]byte, error) {
-	if m == MFANone {
+	switch m {
+	case MFANone:
 		return []byte(`"NONE"`), nil
-	} else if m == MFATFATotp {
+	case MFATFATotp:
 		return []byte(`"TFA_TOTP"`), nil
 	}
 	return nil, nil
@@ -461,9 +462,10 @@ func (e EditorType) Value() (driver.Value, error) {
 }
 
 func (e EditorType) MarshalJSON() ([]byte, error) {
-	if e == EditorTypeMarkdown {
+	switch e {
+	case EditorTypeMarkdown:
 		return []byte(`"MARKDOWN"`), nil
-	} else if e == EditorTypeRichText {
+	case EditorTypeRichText:
 		return []byte(`"RICHTEXT"`), nil
 	}
 	return nil, nil
@@ -492,9 +494,10 @@ const (
 )
 
 func (o OptionType) MarshalJSON() ([]byte, error) {
-	if o == OptionTypeInternal {
+	switch o {
+	case OptionTypeInternal:
 		return []byte(`"INTERNAL"`), nil
-	} else if o == OptionTypeCustom {
+	case OptionTypeCustom:
 		return []byte(`"CUSTOM"`), nil
 	}
 	return nil, nil
@@ -609,9 +612,10 @@ func (j JournalType) Ptr() *JournalType {
 }
 
 func (j JournalType) MarshalJSON() ([]byte, error) {
-	if j == JournalTypePublic {
+	switch j {
+	case JournalTypePublic:
 		return []byte(`"PUBLIC"`), nil
-	} else if j == JournalTypeIntimate {
+	case JournalTypeIntimate:
 		return []byte(`"INTIMATE"`), nil
 	}
 	return nil, nil
@@ -972,9 +976,10 @@ const (
 )
 
 func (c CategoryType) MarshalJSON() ([]byte, error) {
-	if c == CategoryTypeNormal {
+	switch c {
+	case CategoryTypeNormal:
 		return []byte(`"NORMAL"`), nil
-	} else if c == CategoryTypeIntimate {
+	case CategoryTypeIntimate:
 		return []byte(`"INTIMATE"`), nil
 	}
 	return nil, nil

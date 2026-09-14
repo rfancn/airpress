@@ -70,6 +70,7 @@ func (p *PostAuthentication) Authenticate(ctx context.Context, token string, id 
 
 	for _, postCategory := range postCategories {
 		parentID := postCategory.ParentID
+	parentLoop:
 		for {
 			parentCategory, ok := categoryMap[parentID]
 			if !ok || parentCategory == nil {
@@ -81,7 +82,7 @@ func (p *PostAuthentication) Authenticate(ctx context.Context, token string, id 
 			case password:
 				return p.doAuthenticate(ctx, token, id)
 			default:
-				break
+				break parentLoop
 			}
 		}
 	}

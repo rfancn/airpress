@@ -88,7 +88,7 @@ func (s *propertyScannerImpl) ReadThemeProperty(ctx context.Context, themePath s
 		if os.IsNotExist(err) {
 			continue
 		}
-		defer themePropertyFile.Close()
+		defer func() { _ = themePropertyFile.Close() }()
 		fileStat, err = themePropertyFile.Stat()
 		if err != nil {
 			continue
@@ -138,7 +138,7 @@ func (s *propertyScannerImpl) GetThemeScreenshotAbsPath(ctx context.Context, the
 		return "", xerr.NoType.Wrapf(err, "open theme path error themePath=%s", themePath)
 	}
 
-	defer themeDir.Close()
+	defer func() { _ = themeDir.Close() }()
 
 	themeFiles, err := themeDir.ReadDir(0)
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *propertyScannerImpl) ReadThemeConfig(ctx context.Context, themePath str
 			continue
 		}
 
-		defer themeSettingFile.Close()
+		defer func() { _ = themeSettingFile.Close() }()
 
 		fileStat, err = themeSettingFile.Stat()
 		if err != nil {

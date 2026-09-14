@@ -12,7 +12,7 @@ func RainbowPage(page, total, display int) []int {
 		length = total
 	}
 
-	//nolint:gosimple
+	//nolint:staticcheck
 	result := make([]int, length, length)
 	if total >= display {
 		switch {

@@ -166,7 +166,7 @@ func (f *FeedHandler) getLastModifiedTime(posts []*entity.Post) time.Time {
 			}
 		}
 	}
-	if lastModifiedTime == (time.Time{}) {
+	if lastModifiedTime.Equal(time.Time{}) {
 		lastModifiedTime = time.Now()
 	}
 	return lastModifiedTime

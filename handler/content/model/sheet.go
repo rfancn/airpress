@@ -49,9 +49,10 @@ func (s *SheetModel) Content(ctx context.Context, sheet *entity.Post, token stri
 	if sheet == nil {
 		return "", xerr.WithStatus(nil, int(xerr.StatusBadRequest)).WithMsg("查询不到文章信息")
 	}
-	if sheet.Status == consts.PostStatusRecycle || sheet.Status == consts.PostStatusDraft {
+	switch sheet.Status {
+	case consts.PostStatusRecycle, consts.PostStatusDraft:
 		return "", xerr.WithStatus(nil, xerr.StatusNotFound).WithMsg("查询不到文章信息")
-	} else if sheet.Status == consts.PostStatusIntimate {
+	case consts.PostStatusIntimate:
 		if isAuthenticated, err := s.PostAuthentication.IsAuthenticated(ctx, token, sheet.ID); err != nil || !isAuthenticated {
 			model["slug"] = sheet.Slug
 			model["type"] = consts.EncryptTypePost.Name()

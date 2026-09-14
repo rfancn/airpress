@@ -298,7 +298,7 @@ func lexEmoji(l *pageLexer) stateFunc {
 			break
 		}
 		r, _ := utf8.DecodeRune(l.input[i:])
-		if !(isAlphaNumericOrHyphen(r) || r == '+') {
+		if !isAlphaNumericOrHyphen(r) && r != '+' {
 			break
 		}
 	}

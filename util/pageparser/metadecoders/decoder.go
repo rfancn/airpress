@@ -21,10 +21,10 @@ import (
 	"strings"
 
 	xml "github.com/clbanning/mxj/v2"
-	toml "github.com/pelletier/go-toml/v2"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/afero"
 	"github.com/spf13/cast"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // Decoder provides some configuration options for the decoders.

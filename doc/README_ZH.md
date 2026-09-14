@@ -1,5 +1,5 @@
 <p align="center">
-   <img width="360" src="https://raw.githubusercontent.com/rfancn/airpress/main/resources/admin/images/logo.png" />
+   <img width="360" src="https://raw.githubusercontent.com/rfancn/airpress/main/resources/admin/images/logo.svg" />
 </p>
 
 <p align="center"><b>AirPress </b> 是一个用Golang开发的轻量级CMS平台，高效快速.</p>
