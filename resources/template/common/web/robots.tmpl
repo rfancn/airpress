@@ -1,10 +1,10 @@
-{{- define "common/web/robots" -}}
-    {{- if .options.seo_spider_disabled -}}
+{%- autoescape off -%}
+{%- if options.seo_spider_disabled -%}
 User-agent: *
 Disallow: /
-    {{- else -}}
+{%- else -%}
 User-agent: *
-Sitemap: {{.sitemap_xml_url}}
-Sitemap: {{.sitemap_html_url}}
-    {{- end -}}
-{{- end -}}
+Sitemap: {{ sitemap_xml_url }}
+Sitemap: {{ sitemap_html_url }}
+{%- endif -%}
+{% endautoescape %}

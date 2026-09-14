@@ -297,8 +297,8 @@ func (s *Server) handleError(ctx *gin.Context, err error) {
 	model := template.Model{}
 
 	templateName, _ := s.ThemeService.Render(ctx, strconv.Itoa(status))
-	t := s.Template.HTMLTemplate.Lookup(templateName)
-	if t == nil {
+	// 主题未提供该状态码模板时回退到公共错误页
+	if !s.Template.Exists(templateName) {
 		templateName = "common/error/error"
 	}
 
@@ -309,7 +309,10 @@ func (s *Server) handleError(ctx *gin.Context, err error) {
 
 	model["status"] = status
 	model["message"] = message
-	model["err"] = err
+	// 传字符串而非 error 本身：pongo2 对非 Stringer 的接口值会输出 %v 的调试形式
+	if err != nil {
+		model["err"] = err.Error()
+	}
 
 	err = s.Template.ExecuteTemplate(ctx.Writer, templateName, model)
 	if err != nil {

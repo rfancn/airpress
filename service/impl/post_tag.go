@@ -140,16 +140,17 @@ func (p postTagServiceImpl) ListAllTagWithPostCount(ctx context.Context, sort *p
 	for _, tagDTO := range tagDTOs {
 		tagDTOMap[tagDTO.ID] = tagDTO
 	}
-	res := make([]*dto.TagWithPostCount, len(tagWithPostCounts))
-	for i, tagWithPostCount := range tagWithPostCounts {
+	// 注意：DTO 缺失时跳过，不能用 make(len(...)) 预分配，否则会在切片中留下 nil 元素
+	res := make([]*dto.TagWithPostCount, 0, len(tagWithPostCounts))
+	for _, tagWithPostCount := range tagWithPostCounts {
 		tagDTO, ok := tagDTOMap[tagWithPostCount.ID]
 		if !ok {
 			continue
 		}
-		res[i] = &dto.TagWithPostCount{
+		res = append(res, &dto.TagWithPostCount{
 			Tag:       tagDTO,
 			PostCount: tagWithPostCount.PostCount,
-		}
+		})
 	}
 	return res, nil
 }
