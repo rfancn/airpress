@@ -1,10 +1,9 @@
-{{- define "common/web/sitemap_html" -}}
-    <!DOCTYPE html>
+<!DOCTYPE html>
     <html lang="zh-CN">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-        <title>{{ .blog_title}} 网站地图</title>
+        <title>{{ blog_title }} 网站地图</title>
         <meta name="robots" content="index,follow"/>
         <style type="text/css">
         body {
@@ -120,9 +119,9 @@
         </style>
     </head>
     <body>
-    <h2 style="text-align: center; margin-top: 20px">{{.blog_title}} 网站地图 </h2>
-    <div id="nav"><a href="{{.blog_url}}"><strong>{{.blog_title}}</strong></a> &raquo; <a
-                href="{{.sitemap_html_url}}">站点地图</a></div>
+    <h2 style="text-align: center; margin-top: 20px">{{ blog_title }} 网站地图 </h2>
+    <div id="nav"><a href="{{ blog_url }}"><strong>{{ blog_title }}</strong></a> &raquo; <a
+                href="{{ sitemap_html_url }}">站点地图</a></div>
     <div id="content">
         <h3>最新文章</h3>
         <ul id="contentTable">
@@ -134,68 +133,67 @@
             </li>
             <div class="clear"></div>
             <li>
-                <div class="T1 pull-left"><a href="{{.blog_url}}" title="{{.blog_title}}">{{.blog_title}}</a></div>
-                <div class="T2 pull-right">{{unix_milli_time_format "2006-01-02" (int64 .options.birthday)}} </div>
+                <div class="T1 pull-left"><a href="{{ blog_url }}" title="{{ blog_title }}">{{ blog_title }}</a></div>
+                <div class="T2 pull-right">{{ unix_milli_time_format("2006-01-02", options.birthday) }} </div>
                 <div class="T3 pull-right">daily</div>
                 <div class="T4 pull-right">1</div>
             </li>
             <div class="clear"></div>
-            {{if (gt (len .posts) 0)}}
-                {{range $post := .posts}}
+            {% if posts|length > 0 %}
+                {% for post in posts %}
                     <li>
                         <div class="T1 pull-left"><a
-                                    href="{{- if $.globalAbsolutePathEnabled}}{{$.blog_url}}{{end}}{{$post.FullPath}}"
-                                    title="{{$post.Title}}">{{$post.Title}} | {{$.blog_title}}</a></div>
-                        <div class="T2 pull-right">{{unix_milli_time_format "2006-01-02" $post.CreateTime}}</div>
+                                    href="{%- if globalAbsolutePathEnabled %}{{ blog_url }}{% endif %}{{ post.FullPath }}"
+                                    title="{{ post.Title }}">{{ post.Title }} | {{ blog_title }}</a></div>
+                        <div class="T2 pull-right">{{ unix_milli_time_format("2006-01-02", post.CreateTime) }}</div>
                         <div class="T3 pull-right">daily</div>
                         <div class="T4 pull-right">0.6</div>
                     </li>
                     <div class="clear"></div>
-                {{end}}
-            {{end}}
+                {% endfor %}
+            {% endif %}
         </ul>
     </div>
     <div id="content">
         <h3>分类目录</h3>
         <ul id="contentTable">
-            {{ $cagegorys:=(listCategory)}}
-            {{if (gt (len $cagegorys) 0)}}
-                {{range $category := $cagegorys}}
+            {% set cagegorys = listCategory() %}
+            {% if cagegorys|length > 0 %}
+                {% for category in cagegorys %}
                     <li>
                         <div class="T1 pull-left"><a
-                                    href="{{- if $.globalAbsolutePathEnabled}}{{$.blog_url}}{{end}}{{$category.FullPath}}"
-                                    title="{{$category.Name}}">{{$category.Name}} | {{$.blog_title}}</a></div>
-                        <div class="T2 pull-right">{{unix_milli_time_format "2006-01-02" $category.CreateTime}}</div>
+                                    href="{%- if globalAbsolutePathEnabled %}{{ blog_url }}{% endif %}{{ category.FullPath }}"
+                                    title="{{ category.Name }}">{{ category.Name }} | {{ blog_title }}</a></div>
+                        <div class="T2 pull-right">{{ unix_milli_time_format("2006-01-02", category.CreateTime) }}</div>
                         <div class="T3 pull-right">daily</div>
                         <div class="T4 pull-right">0.6</div>
                     </li>
                     <div class="clear"></div>
-                {{end}}
-            {{end}}
+                {% endfor %}
+            {% endif %}
         </ul>
     </div>
     <div id="content">
         <h3>标签目录</h3>
         <ul id="contentTable">
-            {{ $tags:=(getAllTag)}}
-            {{if (gt (len $tags) 0)}}
-                {{range $tag := $tags}}
+            {% set tags = getAllTag() %}
+            {% if tags|length > 0 %}
+                {% for tag in tags %}
                     <li>
                         <div class="T1 pull-left"><a
-                                    href="{{- if $.globalAbsolutePathEnabled}}{{$.blog_url}}{{end}}{{$tag.FullPath}}"
-                                    title="{{$tag.Name}}">{{$tag.Name}} | {{$.blog_title}}</a></div>
-                        <div class="T2 pull-right">{{unix_milli_time_format "2006-01-02" $tag.CreateTime}}</div>
+                                    href="{%- if globalAbsolutePathEnabled %}{{ blog_url }}{% endif %}{{ tag.FullPath }}"
+                                    title="{{ tag.Name }}">{{ tag.Name }} | {{ blog_title }}</a></div>
+                        <div class="T2 pull-right">{{ unix_milli_time_format("2006-01-02", tag.CreateTime) }}</div>
                         <div class="T3 pull-right">daily</div>
                         <div class="T4 pull-right">0.6</div>
                     </li>
                     <div class="clear"></div>
-                {{end}}
-            {{end}}
+                {% endfor %}
+            {% endif %}
         </ul>
     </div>
     <div id="footer">
-        该文件由 <a href="{{.blog_url}}" title="{{.blog_title}}">{{.blog_title}}</a> 网站自动生成。
+        该文件由 <a href="{{ blog_url }}" title="{{ blog_title }}">{{ blog_title }}</a> 网站自动生成。
     </div>
     </body>
     </html>
-{{end}}
