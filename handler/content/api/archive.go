@@ -1,9 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 
 	"github.com/rfancn/airpress/consts"
+	"github.com/rfancn/airpress/model/dto"
+	"github.com/rfancn/airpress/model/vo"
 	"github.com/rfancn/airpress/service"
 	"github.com/rfancn/airpress/service/assembler"
 )
@@ -20,18 +22,34 @@ func NewArchiveHandler(postService service.PostService, postAssemeber assembler.
 	}
 }
 
-func (a *ArchiveHandler) ListYearArchives(ctx *gin.Context) (interface{}, error) {
+// ListYearArchivesInput 按年份归档查询无输入参数。
+type ListYearArchivesInput struct{}
+
+// ListYearArchives 获取按年份归档的文章列表。
+func (a *ArchiveHandler) ListYearArchives(ctx context.Context, _ *ListYearArchivesInput) (*dto.HumaOut[[]*vo.ArchiveYear], error) {
 	posts, err := a.PostService.GetByStatus(ctx, []consts.PostStatus{consts.PostStatusPublished}, consts.PostTypePost, nil)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*vo.ArchiveYear](err)
 	}
-	return a.PostAssembler.ConvertToArchiveYearVOs(ctx, posts)
+	vos, err := a.PostAssembler.ConvertToArchiveYearVOs(ctx, posts)
+	if err != nil {
+		return dto.HumaErr[[]*vo.ArchiveYear](err)
+	}
+	return dto.HumaOK(vos)
 }
 
-func (a *ArchiveHandler) ListMonthArchives(ctx *gin.Context) (interface{}, error) {
+// ListMonthArchivesInput 按月份归档查询无输入参数。
+type ListMonthArchivesInput struct{}
+
+// ListMonthArchives 获取按月份归档的文章列表。
+func (a *ArchiveHandler) ListMonthArchives(ctx context.Context, _ *ListMonthArchivesInput) (*dto.HumaOut[[]*vo.ArchiveMonth], error) {
 	posts, err := a.PostService.GetByStatus(ctx, []consts.PostStatus{consts.PostStatusPublished}, consts.PostTypePost, nil)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*vo.ArchiveMonth](err)
 	}
-	return a.PostAssembler.ConvertTOArchiveMonthVOs(ctx, posts)
+	vos, err := a.PostAssembler.ConvertTOArchiveMonthVOs(ctx, posts)
+	if err != nil {
+		return dto.HumaErr[[]*vo.ArchiveMonth](err)
+	}
+	return dto.HumaOK(vos)
 }

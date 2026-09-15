@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"path/filepath"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -19,6 +21,9 @@ import (
 
 func (s *Server) RegisterRouters() {
 	router := s.Router
+	// 收集所有 huma API 实例及其 group 前缀，最后合并成一份 OpenAPI 3.1 文档
+	var humaAPIs []huma.API
+	var humaPrefixes []string
 	if config.IsDev() {
 		router.Use(cors.New(cors.Config{
 			AllowAllOrigins:  true,
@@ -55,6 +60,16 @@ func (s *Server) RegisterRouters() {
 			{
 				authRouter := adminAPIRouter.Group("")
 				authRouter.Use(s.AuthMiddleware.GetWrapHandler())
+				// huma 挂在 authRouter 上，鉴权中间件自动生效
+				adminHumaAPI, adminPrefix := newHumaAPI(s.Router, authRouter, "AirPress Admin API")
+				humaAPIs = append(humaAPIs, adminHumaAPI)
+				humaPrefixes = append(humaPrefixes, adminPrefix)
+				huma.Register(adminHumaAPI, huma.Operation{
+					Method:  http.MethodGet,
+					Path:    "/posts/{postID}",
+					Summary: "获取文章详情",
+					Tags:    []string{"admin/posts"},
+				}, s.PostHandler.GetByPostID)
 				authRouter.POST("/logout", s.wrapHandler(s.AdminHandler.LogOut))
 				authRouter.POST("/password/code", s.wrapHandler(s.AdminHandler.SendResetCode))
 				authRouter.GET("/environments", s.wrapHandler(s.AdminHandler.GetEnvironments))
@@ -102,7 +117,8 @@ func (s *Server) RegisterRouters() {
 					postRouter.GET("", s.wrapHandler(s.PostHandler.ListPosts))
 					postRouter.GET("/latest", s.wrapHandler(s.PostHandler.ListLatestPosts))
 					postRouter.GET("/status/:status", s.wrapHandler(s.PostHandler.ListPostsByStatus))
-					postRouter.GET("/:postID", s.wrapHandler(s.PostHandler.GetByPostID))
+					// 已迁移到 huma：huma.Register(adminHumaAPI, ... "/posts/{postID}")
+					// postRouter.GET("/:postID", s.wrapHandler(s.PostHandler.GetByPostID))
 					postRouter.POST("", s.wrapHandler(s.PostHandler.CreatePost))
 					postRouter.PUT("/:postID", s.wrapHandler(s.PostHandler.UpdatePost))
 					postRouter.PUT("/:postID/status/:status", s.wrapHandler(s.PostHandler.UpdatePostStatus))
@@ -312,8 +328,26 @@ func (s *Server) RegisterRouters() {
 			contentAPIRouter := router.Group("/api/content")
 			contentAPIRouter.Use(s.LogMiddleware.LoggerWithConfig(middleware.GinLoggerConfig{}), s.RecoveryMiddleware.RecoveryWithLogger())
 
-			contentAPIRouter.GET("/archives/years", s.wrapHandler(s.ContentAPIArchiveHandler.ListYearArchives))
-			contentAPIRouter.GET("/archives/months", s.wrapHandler(s.ContentAPIArchiveHandler.ListMonthArchives))
+			// huma 挂在 contentAPIRouter 上，content api 无需鉴权
+			contentHumaAPI, contentPrefix := newHumaAPI(s.Router, contentAPIRouter, "AirPress Content API")
+			humaAPIs = append(humaAPIs, contentHumaAPI)
+			humaPrefixes = append(humaPrefixes, contentPrefix)
+			huma.Register(contentHumaAPI, huma.Operation{
+				Method:  http.MethodGet,
+				Path:    "/archives/years",
+				Summary: "按年份归档",
+				Tags:    []string{"content/archives"},
+			}, s.ContentAPIArchiveHandler.ListYearArchives)
+			huma.Register(contentHumaAPI, huma.Operation{
+				Method:  http.MethodGet,
+				Path:    "/archives/months",
+				Summary: "按月归档",
+				Tags:    []string{"content/archives"},
+			}, s.ContentAPIArchiveHandler.ListMonthArchives)
+
+			// 已迁移到 huma：huma.Register(contentHumaAPI, ... "/archives/years", "/archives/months")
+			// contentAPIRouter.GET("/archives/years", s.wrapHandler(s.ContentAPIArchiveHandler.ListYearArchives))
+			// contentAPIRouter.GET("/archives/months", s.wrapHandler(s.ContentAPIArchiveHandler.ListMonthArchives))
 
 			contentAPIRouter.GET("/categories", s.wrapHandler(s.ContentAPICategoryHandler.ListCategories))
 			contentAPIRouter.GET("/categories/:slug/posts", s.wrapHandler(s.ContentAPICategoryHandler.ListPosts))
@@ -350,6 +384,9 @@ func (s *Server) RegisterRouters() {
 			contentAPIRouter.POST("/comments/:commentID/likes", s.wrapHandler(s.ContentAPICommentHandler.Like))
 		}
 	}
+
+	// 合并所有 huma API 的 OpenAPI 文档，注册 /openapi.json
+	s.registerHumaDocs(humaAPIs, humaPrefixes)
 }
 
 func (s *Server) registerDynamicRouters(contentRouter *gin.RouterGroup) error {

@@ -91,7 +91,7 @@ func (b *BackupHandler) HandleWorkDir(ctx *gin.Context) {
 func (b *BackupHandler) DownloadBackups(ctx *gin.Context) {
 	filename := ctx.Param("path")
 	if filename == "" {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO{
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO[any]{
 			Status:  http.StatusBadRequest,
 			Message: "Filename parameter does not exist",
 		})
@@ -101,7 +101,7 @@ func (b *BackupHandler) DownloadBackups(ctx *gin.Context) {
 	if err != nil {
 		log.CtxErrorf(ctx, "err=%+v", err)
 		status := xerr.GetHTTPStatus(err)
-		ctx.JSON(status, &dto.BaseDTO{Status: status, Message: xerr.GetMessage(err)})
+		ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 	}
 	ctx.File(filePath)
 }
@@ -150,7 +150,7 @@ func (b *BackupHandler) ListExportData(ctx *gin.Context) (interface{}, error) {
 func (b *BackupHandler) DownloadData(ctx *gin.Context) {
 	filename := ctx.Param("path")
 	if filename == "" {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO{
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO[any]{
 			Status:  http.StatusBadRequest,
 			Message: "Filename parameter does not exist",
 		})
@@ -159,7 +159,7 @@ func (b *BackupHandler) DownloadData(ctx *gin.Context) {
 	if err != nil {
 		log.CtxErrorf(ctx, "err=%+v", err)
 		status := xerr.GetHTTPStatus(err)
-		ctx.JSON(status, &dto.BaseDTO{Status: status, Message: xerr.GetMessage(err)})
+		ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 	}
 	ctx.File(filePath)
 }
@@ -200,7 +200,7 @@ func (b *BackupHandler) DeleteMarkdowns(ctx *gin.Context) (interface{}, error) {
 func (b *BackupHandler) DownloadMarkdown(ctx *gin.Context) {
 	filename := ctx.Param("filename")
 	if filename == "" {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO{
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &dto.BaseDTO[any]{
 			Status:  http.StatusBadRequest,
 			Message: "Filename parameter does not exist",
 		})
@@ -210,7 +210,7 @@ func (b *BackupHandler) DownloadMarkdown(ctx *gin.Context) {
 	if err != nil {
 		log.CtxErrorf(ctx, "err=%+v", err)
 		status := xerr.GetHTTPStatus(err)
-		ctx.JSON(status, &dto.BaseDTO{Status: status, Message: xerr.GetMessage(err)})
+		ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 	}
 	ctx.File(filePath)
 }
@@ -223,11 +223,11 @@ func wrapHandler(handler wrapperHandler) gin.HandlerFunc {
 		if err != nil {
 			log.CtxErrorf(ctx, "err=%+v", err)
 			status := xerr.GetHTTPStatus(err)
-			ctx.JSON(status, &dto.BaseDTO{Status: status, Message: xerr.GetMessage(err)})
+			ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 			return
 		}
 
-		ctx.JSON(http.StatusOK, &dto.BaseDTO{
+		ctx.JSON(http.StatusOK, &dto.BaseDTO[any]{
 			Status:  http.StatusOK,
 			Data:    data,
 			Message: "OK",

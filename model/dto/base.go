@@ -8,10 +8,11 @@ import (
 	"github.com/rfancn/airpress/util"
 )
 
-type BaseDTO struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+// BaseDTO 通用响应信封。Data 泛型化，使 huma 能为每个接口推导 data 的具体 schema。
+type BaseDTO[T any] struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Data    T      `json:"data"`
 }
 
 type Page struct {

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"github.com/rfancn/airpress/handler/trans"
 	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
+	"github.com/rfancn/airpress/model/vo"
 	"github.com/rfancn/airpress/service"
 	"github.com/rfancn/airpress/service/assembler"
 	"github.com/rfancn/airpress/util"
@@ -134,21 +136,22 @@ func (p *PostHandler) ListPostsByStatus(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(postDTOs, totalCount, postQuery.Page), nil
 }
 
-func (p *PostHandler) GetByPostID(ctx *gin.Context) (interface{}, error) {
-	postIDStr := ctx.Param("postID")
-	postID, err := strconv.ParseInt(postIDStr, 10, 32)
+// GetByPostIDInput 文章详情查询输入。
+type GetByPostIDInput struct {
+	PostID int32 `path:"postID" doc:"文章ID"`
+}
+
+// GetByPostID 获取文章详情（huma 风格，挂在需要鉴权的 admin group 下）。
+func (p *PostHandler) GetByPostID(ctx context.Context, in *GetByPostIDInput) (*dto.HumaOut[*vo.PostDetailVO], error) {
+	post, err := p.PostService.GetByPostID(ctx, in.PostID)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	post, err := p.PostService.GetByPostID(ctx, int32(postID))
-	if err != nil {
-		return nil, err
+		return dto.HumaErr[*vo.PostDetailVO](err)
 	}
 	postDetailVO, err := p.PostAssembler.ConvertToDetailVO(ctx, post)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*vo.PostDetailVO](err)
 	}
-	return postDetailVO, nil
+	return dto.HumaOK(postDetailVO)
 }
 
 func (p *PostHandler) CreatePost(ctx *gin.Context) (interface{}, error) {

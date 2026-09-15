@@ -85,7 +85,7 @@ func (a *AuthMiddleware) GetWrapHandler() gin.HandlerFunc {
 }
 
 func abortWithStatusJSON(ctx *gin.Context, status int, message string) {
-	ctx.AbortWithStatusJSON(status, &dto.BaseDTO{
+	ctx.AbortWithStatusJSON(status, &dto.BaseDTO[any]{
 		Status:  status,
 		Message: message,
 	})

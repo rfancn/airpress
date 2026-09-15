@@ -231,11 +231,11 @@ func (s *Server) wrapHandler(handler wrapperHandler) gin.HandlerFunc {
 		if err != nil {
 			s.logger.Error("handler error", zap.Error(err))
 			status := xerr.GetHTTPStatus(err)
-			ctx.JSON(status, &dto.BaseDTO{Status: status, Message: xerr.GetMessage(err)})
+			ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 			return
 		}
 
-		ctx.JSON(http.StatusOK, &dto.BaseDTO{
+		ctx.JSON(http.StatusOK, &dto.BaseDTO[any]{
 			Status:  http.StatusOK,
 			Data:    data,
 			Message: "OK",
