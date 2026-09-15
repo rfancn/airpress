@@ -2,17 +2,11 @@ package admin
 
 import (
 	"context"
-	"errors"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/trans"
 	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/model/property"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type AdminHandler struct {
@@ -29,40 +23,44 @@ func NewAdminHandler(optionService service.OptionService, adminService service.A
 	}
 }
 
-func (a *AdminHandler) IsInstalled(ctx *gin.Context) (interface{}, error) {
-	return a.OptionService.GetOrByDefaultWithErr(ctx, property.IsInstalled, false)
+// IsInstalledInput 检查安装状态无输入参数。
+type IsInstalledInput struct{}
+
+// IsInstalled 检查博客是否已安装。
+func (a *AdminHandler) IsInstalled(ctx context.Context, _ *IsInstalledInput) (*dto.HumaOut[interface{}], error) {
+	data, err := a.OptionService.GetOrByDefaultWithErr(ctx, property.IsInstalled, false)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](data)
 }
 
-func (a *AdminHandler) AuthPreCheck(ctx *gin.Context) (interface{}, error) {
-	var loginParam param.LoginParam
-	err := ctx.ShouldBindJSON(&loginParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.BadParam.Wrapf(err, "")
-	}
-
-	user, err := a.AdminService.Authenticate(ctx, loginParam)
-	if err != nil {
-		return nil, err
-	}
-	return &dto.LoginPreCheckDTO{NeedMFACode: a.TwoFactorMFAService.UseMFA(user.MfaType)}, nil
+// AuthPreCheckInput 登录预检输入。
+type AuthPreCheckInput struct {
+	Body param.LoginParam `doc:"登录参数"`
 }
 
-func (a *AdminHandler) Auth(ctx *gin.Context) (interface{}, error) {
-	var loginParam param.LoginParam
-	err := ctx.ShouldBindJSON(&loginParam)
+// AuthPreCheck 登录预检（判断是否需要 MFA 验证码）。
+func (a *AdminHandler) AuthPreCheck(ctx context.Context, in *AuthPreCheckInput) (*dto.HumaOut[*dto.LoginPreCheckDTO], error) {
+	user, err := a.AdminService.Authenticate(ctx, in.Body)
 	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.BadParam.Wrapf(err, "").WithStatus(xerr.StatusBadRequest)
+		return dto.HumaErr[*dto.LoginPreCheckDTO](err)
 	}
+	return dto.HumaOK(&dto.LoginPreCheckDTO{NeedMFACode: a.TwoFactorMFAService.UseMFA(user.MfaType)})
+}
 
-	return a.AdminService.Auth(ctx, loginParam)
+// AuthInput 登录输入。
+type AuthInput struct {
+	Body param.LoginParam `doc:"登录参数"`
+}
+
+// Auth 管理员登录。
+func (a *AdminHandler) Auth(ctx context.Context, in *AuthInput) (*dto.HumaOut[*dto.AuthTokenDTO], error) {
+	data, err := a.AdminService.Auth(ctx, in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.AuthTokenDTO](err)
+	}
+	return dto.HumaOK(data)
 }
 
 // LogOutInput 登出无输入参数。
@@ -91,13 +89,18 @@ func (a *AdminHandler) SendResetCode(ctx context.Context, in *SendResetCodeInput
 	return dto.HumaOK[interface{}](nil)
 }
 
-func (a *AdminHandler) RefreshToken(ctx *gin.Context) (interface{}, error) {
-	refreshToken := ctx.Param("refreshToken")
-	if refreshToken == "" {
-		return nil, xerr.BadParam.New("refreshToken参数为空").WithStatus(xerr.StatusBadRequest).
-			WithMsg("refreshToken 参数不能为空")
+// RefreshTokenInput 刷新令牌输入。
+type RefreshTokenInput struct {
+	RefreshToken string `path:"refreshToken" doc:"刷新令牌"`
+}
+
+// RefreshToken 刷新访问令牌。
+func (a *AdminHandler) RefreshToken(ctx context.Context, in *RefreshTokenInput) (*dto.HumaOut[*dto.AuthTokenDTO], error) {
+	data, err := a.AdminService.RefreshToken(ctx, in.RefreshToken)
+	if err != nil {
+		return dto.HumaErr[*dto.AuthTokenDTO](err)
 	}
-	return a.AdminService.RefreshToken(ctx, refreshToken)
+	return dto.HumaOK(data)
 }
 
 // GetEnvironmentsInput 获取环境信息无输入参数。

@@ -73,9 +73,11 @@ func newHumaAPI(engine *gin.Engine, group *gin.RouterGroup, title string) (huma.
 	cfg.Components = &huma.Components{
 		Schemas: huma.NewMapRegistry("#/components/schemas/", schemaNamer),
 	}
-	// 关闭 huma 自带的 /openapi 与 /docs 路由，改由合并后统一注册，避免多个 API 实例冲突。
+	// 关闭 huma 自带的 /openapi、/docs、/schemas 路由，改由合并后统一注册，
+	// 避免多个 API 实例在同一 group 上注册同名路由冲突。
 	cfg.OpenAPIPath = ""
 	cfg.DocsPath = ""
+	cfg.SchemasPath = ""
 	return humagin.NewWithGroup(engine, group, cfg), group.BasePath()
 }
 

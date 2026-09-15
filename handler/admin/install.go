@@ -1,15 +1,11 @@
 package admin
 
 import (
-	"errors"
+	"context"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/trans"
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type InstallHandler struct {
@@ -22,19 +18,15 @@ func NewInstallHandler(installService service.InstallService) *InstallHandler {
 	}
 }
 
-func (i *InstallHandler) InstallBlog(ctx *gin.Context) (interface{}, error) {
-	var installParam param.Install
-	err := ctx.ShouldBindJSON(&installParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest)
+// InstallBlogInput 安装博客输入。
+type InstallBlogInput struct {
+	Body param.Install `doc:"安装参数"`
+}
+
+// InstallBlog 安装博客（huma 风格，挂在无鉴权的 admin public group 下）。
+func (i *InstallHandler) InstallBlog(ctx context.Context, in *InstallBlogInput) (*dto.HumaOut[string], error) {
+	if err := i.InstallService.InstallBlog(ctx, in.Body); err != nil {
+		return dto.HumaErr[string](err)
 	}
-	err = i.InstallService.InstallBlog(ctx, installParam)
-	if err != nil {
-		return nil, err
-	}
-	return "安装完成", nil
+	return dto.HumaOK("安装完成")
 }

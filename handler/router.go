@@ -51,11 +51,17 @@ func (s *Server) RegisterRouters() {
 		{
 			adminAPIRouter := router.Group("/api/admin")
 			adminAPIRouter.Use(s.LogMiddleware.LoggerWithConfig(middleware.GinLoggerConfig{}), s.RecoveryMiddleware.RecoveryWithLogger(), s.InstallRedirectMiddleware.InstallRedirect())
-			adminAPIRouter.GET("/is_installed", s.wrapHandler(s.AdminHandler.IsInstalled))
-			adminAPIRouter.POST("/login/precheck", s.wrapHandler(s.AdminHandler.AuthPreCheck))
-			adminAPIRouter.POST("/login", s.wrapHandler(s.AdminHandler.Auth))
-			adminAPIRouter.POST("/refresh/:refreshToken", s.wrapHandler(s.AdminHandler.RefreshToken))
-			adminAPIRouter.POST("/installations", s.wrapHandler(s.InstallHandler.InstallBlog))
+			// 公开 huma API（登录/安装，无鉴权，不能挂到带鉴权的 authRouter 上）
+			adminPublicHumaAPI, adminPublicPrefix := newHumaAPI(s.Router, adminAPIRouter, "AirPress Admin Public API")
+			humaAPIs = append(humaAPIs, adminPublicHumaAPI)
+			humaPrefixes = append(humaPrefixes, adminPublicPrefix)
+			s.registerAdminPublicHumaAPI(adminPublicHumaAPI)
+			// 已迁移到 huma：is_installed / login/precheck / login / refresh/{refreshToken} / installations
+			// adminAPIRouter.GET("/is_installed", s.wrapHandler(s.AdminHandler.IsInstalled))
+			// adminAPIRouter.POST("/login/precheck", s.wrapHandler(s.AdminHandler.AuthPreCheck))
+			// adminAPIRouter.POST("/login", s.wrapHandler(s.AdminHandler.Auth))
+			// adminAPIRouter.POST("/refresh/:refreshToken", s.wrapHandler(s.AdminHandler.RefreshToken))
+			// adminAPIRouter.POST("/installations", s.wrapHandler(s.InstallHandler.InstallBlog))
 			{
 				authRouter := adminAPIRouter.Group("")
 				authRouter.Use(s.AuthMiddleware.GetWrapHandler())

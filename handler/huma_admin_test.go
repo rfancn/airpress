@@ -66,6 +66,11 @@ func TestAdminHumaRegistration(t *testing.T) {
 	s.registerAdminTheme(authGroup, humaAPI)
 	s.registerAdminEmail(authGroup, humaAPI)
 
+	// 公开 API（登录/安装，独立实例，挂在无鉴权的 adminAPIRouter）
+	publicGroup := engine.Group("/api/admin")
+	publicAPI, publicPrefix := newHumaAPI(engine, publicGroup, "AirPress Admin Public API")
+	s.registerAdminPublicHumaAPI(publicAPI)
+
 	merged := &huma.OpenAPI{
 		OpenAPI:    humaAPI.OpenAPI().OpenAPI,
 		Info:       humaAPI.OpenAPI().Info,
@@ -73,6 +78,7 @@ func TestAdminHumaRegistration(t *testing.T) {
 		Components: &huma.Components{},
 	}
 	mergeInto(merged, humaAPI.OpenAPI(), prefix)
+	mergeInto(merged, publicAPI.OpenAPI(), publicPrefix)
 
 	if merged.OpenAPI != "3.1.0" {
 		t.Fatalf("expected 3.1.0, got %s", merged.OpenAPI)

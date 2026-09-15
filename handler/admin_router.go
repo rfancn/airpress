@@ -12,6 +12,17 @@ import (
 // 迁移规则：把函数内的 gin 注册（s.wrapHandler(...)）替换为 huma.Register(api, ...)，
 // 并在 handler 中把方法改写为 huma 签名。api 即挂在 authRouter 上的 adminHumaAPI。
 
+// registerAdminPublicHumaAPI 注册 admin 公开路由（登录/安装，无鉴权）。
+// 这些挂在 adminAPIRouter 上（该 group 无鉴权中间件，仅有日志/恢复/安装重定向），
+// 故使用独立的 huma API 实例，不能挂在带鉴权的 authRouter 上。
+func (s *Server) registerAdminPublicHumaAPI(api huma.API) {
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/is_installed", Summary: "检查是否已安装", Tags: []string{"admin/public"}}, s.AdminHandler.IsInstalled)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/login/precheck", Summary: "登录预检", Tags: []string{"admin/public"}}, s.AdminHandler.AuthPreCheck)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/login", Summary: "管理员登录", Tags: []string{"admin/public"}}, s.AdminHandler.Auth)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/refresh/{refreshToken}", Summary: "刷新令牌", Tags: []string{"admin/public"}}, s.AdminHandler.RefreshToken)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/installations", Summary: "安装博客", Tags: []string{"admin/public"}}, s.InstallHandler.InstallBlog)
+}
+
 // registerAdminBase 注册 authRouter 下无 subgroup 的直接路由。
 func (s *Server) registerAdminBase(rg *gin.RouterGroup, api huma.API) {
 	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/logout", Summary: "管理员登出", Tags: []string{"admin/base"}}, s.AdminHandler.LogOut)
