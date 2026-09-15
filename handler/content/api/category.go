@@ -1,17 +1,18 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 
 	"github.com/rfancn/airpress/consts"
-	"github.com/rfancn/airpress/handler/binding"
 	"github.com/rfancn/airpress/handler/content/authentication"
 	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
 	"github.com/rfancn/airpress/service/assembler"
 	"github.com/rfancn/airpress/util"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type CategoryHandler struct {
@@ -30,64 +31,93 @@ func NewCategoryHandler(postService service.PostService, categoryService service
 	}
 }
 
-func (c *CategoryHandler) ListCategories(ctx *gin.Context) (interface{}, error) {
-	categoryQuery := struct {
-		*param.Sort
-		More *bool `json:"more" form:"more"`
-	}{}
-
-	err := ctx.ShouldBindQuery(&categoryQuery)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	if categoryQuery.Sort == nil || len(categoryQuery.Fields) == 0 {
-		categoryQuery.Sort = &param.Sort{Fields: []string{"updateTime,desc"}}
-	}
-	if categoryQuery.More != nil && *categoryQuery.More {
-		return c.CategoryService.ListCategoryWithPostCountDTO(ctx, categoryQuery.Sort)
-	}
-	categories, err := c.CategoryService.ListAll(ctx, categoryQuery.Sort)
-	if err != nil {
-		return nil, err
-	}
-	return c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
+// ListCategoriesInput 分类列表查询输入。
+type ListCategoriesInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
+	More bool     `query:"more" doc:"是否返回带文章数的分类"`
 }
 
-func (c *CategoryHandler) ListPosts(ctx *gin.Context) (interface{}, error) {
-	slug, err := util.ParamString(ctx, "slug")
+// ListCategories 获取分类列表。
+func (c *CategoryHandler) ListCategories(ctx context.Context, in *ListCategoriesInput) (*dto.HumaOut[interface{}], error) {
+	sort := &param.Sort{Fields: in.Sort}
+	if len(sort.Fields) == 0 {
+		sort.Fields = []string{"updateTime,desc"}
+	}
+	if in.More {
+		data, err := c.CategoryService.ListCategoryWithPostCountDTO(ctx, sort)
+		if err != nil {
+			return dto.HumaErr[interface{}](err)
+		}
+		return dto.HumaOK[interface{}](data)
+	}
+	categories, err := c.CategoryService.ListAll(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[interface{}](err)
 	}
-	category, err := c.CategoryService.GetBySlug(ctx, slug)
+	data, err := c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[interface{}](err)
 	}
-	postQuery := param.PostQuery{}
-	err = ctx.ShouldBindWith(&postQuery, binding.CustomFormBinding)
+	return dto.HumaOK[interface{}](data)
+}
+
+// ListPostsInput 分类下文章列表查询输入。
+type ListPostsInput struct {
+	Slug           string   `path:"slug" doc:"分类别名"`
+	Page           int      `query:"page" doc:"页码"`
+	Size           int      `query:"size" doc:"每页数量"`
+	Sort           []string `query:"sort" doc:"排序字段"`
+	Keyword        string   `query:"keyword" doc:"关键字"`
+	Password       string   `query:"password" doc:"分类密码"`
+	Authentication string   `cookie:"authentication" doc:"认证 token"`
+}
+
+// ListPosts 获取分类下的文章列表。
+func (c *CategoryHandler) ListPosts(ctx context.Context, in *ListPostsInput) (*dto.HumaOut[*dto.Page], error) {
+	category, err := c.CategoryService.GetBySlug(ctx, in.Slug)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+		return dto.HumaErr[*dto.Page](err)
 	}
-	if postQuery.Sort == nil {
-		postQuery.Sort = &param.Sort{Fields: []string{"topPriority,desc", "updateTime,desc"}}
+
+	postQuery := param.PostQuery{
+		Page: param.Page{
+			PageNum:  in.Page,
+			PageSize: in.Size,
+		},
+		Sort: &param.Sort{Fields: in.Sort},
 	}
-	password, _ := util.MustGetQueryString(ctx, "password")
+	// huma 不支持指针 query 参数，空关键字视为未提供（等价于原 nil）
+	if in.Keyword != "" {
+		postQuery.Keyword = &in.Keyword
+	}
+	if len(postQuery.Sort.Fields) == 0 {
+		postQuery.Sort.Fields = []string{"topPriority,desc", "updateTime,desc"}
+	}
 
 	if category.Type == consts.CategoryTypeIntimate {
-		token, _ := ctx.Cookie("authentication")
+		token := in.Authentication
 		if authenticated, _ := c.CategoryAuthentication.IsAuthenticated(ctx, token, category.ID); !authenticated {
-			token, err := c.CategoryAuthentication.Authenticate(ctx, token, category.ID, password)
+			newToken, err := c.CategoryAuthentication.Authenticate(ctx, token, category.ID, in.Password)
 			if err != nil {
-				return nil, err
+				return dto.HumaErr[*dto.Page](err)
 			}
-			ctx.SetCookie("authentication", token, 1800, "/", "", false, true)
+			// 恢复私密分类认证成功后的 Cookie 设置（等价于原 gin 的 ctx.SetCookie）
+			if hctx, ok := ctx.(huma.Context); ok {
+				humagin.Unwrap(hctx).SetCookie("authentication", newToken, 1800, "/", "", false, true)
+			}
 		}
 	}
+
 	postQuery.WithPassword = util.BoolPtr(false)
 	postQuery.Statuses = []*consts.PostStatus{consts.PostStatusPublished.Ptr(), consts.PostStatusIntimate.Ptr()}
+
 	posts, totalCount, err := c.PostService.Page(ctx, postQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	postVOs, err := c.PostAssembler.ConvertToListVO(ctx, posts)
-	return dto.NewPage(postVOs, totalCount, postQuery.Page), err
+	if err != nil {
+		return dto.HumaErr[*dto.Page](err)
+	}
+	return dto.HumaOK(dto.NewPage(postVOs, totalCount, postQuery.Page))
 }

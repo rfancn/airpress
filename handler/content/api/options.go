@@ -1,8 +1,9 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/property"
 	"github.com/rfancn/airpress/service"
 )
@@ -19,11 +20,15 @@ func NewOptionHandler(
 	}
 }
 
-func (o *OptionHandler) Comment(ctx *gin.Context) (interface{}, error) {
+// CommentInput 评论选项查询无输入参数。
+type CommentInput struct{}
+
+// Comment 获取评论相关选项。
+func (o *OptionHandler) Comment(ctx context.Context, _ *CommentInput) (*dto.HumaOut[map[string]interface{}], error) {
 	result := make(map[string]interface{})
 
 	result[property.CommentGravatarSource.KeyValue] = o.OptionService.GetOrByDefault(ctx, property.CommentGravatarSource)
 	result[property.CommentGravatarDefault.KeyValue] = o.OptionService.GetOrByDefault(ctx, property.CommentGravatarDefault)
 	result[property.CommentContentPlaceholder.KeyValue] = o.OptionService.GetOrByDefault(ctx, property.CommentContentPlaceholder)
-	return result, nil
+	return dto.HumaOK(result)
 }

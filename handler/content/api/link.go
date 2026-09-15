@@ -1,9 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
+	"github.com/rfancn/airpress/model/vo"
 	"github.com/rfancn/airpress/service"
 )
 
@@ -17,42 +19,38 @@ func NewLinkHandler(linkService service.LinkService) *LinkHandler {
 	}
 }
 
-type linkParam struct {
-	*param.Sort
+// ListLinksInput 链接列表查询输入。
+type ListLinksInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
 }
 
-func (l *LinkHandler) ListLinks(ctx *gin.Context) (interface{}, error) {
-	p := linkParam{}
-	if err := ctx.ShouldBindQuery(&p); err != nil {
-		return nil, err
+// ListLinks 获取链接列表。
+func (l *LinkHandler) ListLinks(ctx context.Context, in *ListLinksInput) (*dto.HumaOut[[]*dto.Link], error) {
+	sort := &param.Sort{Fields: in.Sort}
+	if len(sort.Fields) == 0 {
+		sort.Fields = []string{"createTime,desc"}
 	}
-
-	if p.Sort == nil || len(p.Fields) == 0 {
-		p.Sort = &param.Sort{
-			Fields: []string{"createTime,desc"},
-		}
-	}
-	links, err := l.LinkService.List(ctx, p.Sort)
+	links, err := l.LinkService.List(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*dto.Link](err)
 	}
-	return l.LinkService.ConvertToDTOs(ctx, links), nil
+	return dto.HumaOK(l.LinkService.ConvertToDTOs(ctx, links))
 }
 
-func (l *LinkHandler) LinkTeamVO(ctx *gin.Context) (interface{}, error) {
-	p := linkParam{}
-	if err := ctx.ShouldBindQuery(&p); err != nil {
-		return nil, err
-	}
+// LinkTeamVOInput 链接团队视图查询输入。
+type LinkTeamVOInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
+}
 
-	if p.Sort == nil || len(p.Fields) == 0 {
-		p.Sort = &param.Sort{
-			Fields: []string{"createTime,desc"},
-		}
+// LinkTeamVO 获取链接团队视图。
+func (l *LinkHandler) LinkTeamVO(ctx context.Context, in *LinkTeamVOInput) (*dto.HumaOut[[]*vo.LinkTeamVO], error) {
+	sort := &param.Sort{Fields: in.Sort}
+	if len(sort.Fields) == 0 {
+		sort.Fields = []string{"createTime,desc"}
 	}
-	links, err := l.LinkService.List(ctx, p.Sort)
+	links, err := l.LinkService.List(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*vo.LinkTeamVO](err)
 	}
-	return l.LinkService.ConvertToLinkTeamVO(ctx, links), nil
+	return dto.HumaOK(l.LinkService.ConvertToLinkTeamVO(ctx, links))
 }

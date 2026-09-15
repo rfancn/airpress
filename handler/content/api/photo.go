@@ -1,10 +1,10 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util"
 )
 
 type PhotoHandler struct {
@@ -17,10 +17,16 @@ func NewPhotoHandler(photoService service.PhotoService) *PhotoHandler {
 	}
 }
 
-func (p *PhotoHandler) Like(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "photoID")
+// LikePhotoInput 图片点赞输入。
+type LikePhotoInput struct {
+	PhotoID int32 `path:"photoID" doc:"图片ID"`
+}
+
+// Like 图片点赞。
+func (p *PhotoHandler) Like(ctx context.Context, in *LikePhotoInput) (*dto.HumaOut[any], error) {
+	err := p.PhotoService.IncreaseLike(ctx, in.PhotoID)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[any](err)
 	}
-	return nil, p.PhotoService.IncreaseLike(ctx, id)
+	return dto.HumaOK[any](nil)
 }

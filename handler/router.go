@@ -332,56 +332,7 @@ func (s *Server) RegisterRouters() {
 			contentHumaAPI, contentPrefix := newHumaAPI(s.Router, contentAPIRouter, "AirPress Content API")
 			humaAPIs = append(humaAPIs, contentHumaAPI)
 			humaPrefixes = append(humaPrefixes, contentPrefix)
-			huma.Register(contentHumaAPI, huma.Operation{
-				Method:  http.MethodGet,
-				Path:    "/archives/years",
-				Summary: "按年份归档",
-				Tags:    []string{"content/archives"},
-			}, s.ContentAPIArchiveHandler.ListYearArchives)
-			huma.Register(contentHumaAPI, huma.Operation{
-				Method:  http.MethodGet,
-				Path:    "/archives/months",
-				Summary: "按月归档",
-				Tags:    []string{"content/archives"},
-			}, s.ContentAPIArchiveHandler.ListMonthArchives)
-
-			// 已迁移到 huma：huma.Register(contentHumaAPI, ... "/archives/years", "/archives/months")
-			// contentAPIRouter.GET("/archives/years", s.wrapHandler(s.ContentAPIArchiveHandler.ListYearArchives))
-			// contentAPIRouter.GET("/archives/months", s.wrapHandler(s.ContentAPIArchiveHandler.ListMonthArchives))
-
-			contentAPIRouter.GET("/categories", s.wrapHandler(s.ContentAPICategoryHandler.ListCategories))
-			contentAPIRouter.GET("/categories/:slug/posts", s.wrapHandler(s.ContentAPICategoryHandler.ListPosts))
-
-			contentAPIRouter.GET("/journals", s.wrapHandler(s.ContentAPIJournalHandler.ListJournal))
-			contentAPIRouter.GET("/journals/:journalID", s.wrapHandler(s.ContentAPIJournalHandler.GetJournal))
-			contentAPIRouter.GET("/journals/:journalID/comments/top_view", s.wrapHandler(s.ContentAPIJournalHandler.ListTopComment))
-			contentAPIRouter.GET("/journals/:journalID/comments/:parentID/children", s.wrapHandler(s.ContentAPIJournalHandler.ListChildren))
-			contentAPIRouter.GET("/journals/:journalID/comments/tree_view", s.wrapHandler(s.ContentAPIJournalHandler.ListCommentTree))
-			contentAPIRouter.GET("/journals/:journalID/comments/list_view", s.wrapHandler(s.ContentAPIJournalHandler.ListComment))
-			contentAPIRouter.POST("/journals/comments", s.wrapHandler(s.ContentAPIJournalHandler.CreateComment))
-			contentAPIRouter.POST("/journals/:journalID/likes", s.wrapHandler(s.ContentAPIJournalHandler.Like))
-
-			contentAPIRouter.POST("/photos/:photoID/likes", s.wrapHandler(s.ContentAPIPhotoHandler.Like))
-
-			contentAPIRouter.GET("/posts/:postID/comments/top_view", s.wrapHandler(s.ContentAPIPostHandler.ListTopComment))
-			contentAPIRouter.GET("/posts/:postID/comments/:parentID/children", s.wrapHandler(s.ContentAPIPostHandler.ListChildren))
-			contentAPIRouter.GET("/posts/:postID/comments/tree_view", s.wrapHandler(s.ContentAPIPostHandler.ListCommentTree))
-			contentAPIRouter.GET("/posts/:postID/comments/list_view", s.wrapHandler(s.ContentAPIPostHandler.ListComment))
-			contentAPIRouter.POST("/posts/comments", s.wrapHandler(s.ContentAPIPostHandler.CreateComment))
-			contentAPIRouter.POST("/posts/:postID/likes", s.wrapHandler(s.ContentAPIPostHandler.Like))
-
-			contentAPIRouter.GET("/sheets/:sheetID/comments/top_view", s.wrapHandler(s.ContentAPISheetHandler.ListTopComment))
-			contentAPIRouter.GET("/sheets/:sheetID/comments/:parentID/children", s.wrapHandler(s.ContentAPISheetHandler.ListChildren))
-			contentAPIRouter.GET("/sheets/:sheetID/comments/tree_view", s.wrapHandler(s.ContentAPISheetHandler.ListCommentTree))
-			contentAPIRouter.GET("/sheets/:sheetID/comments/list_view", s.wrapHandler(s.ContentAPISheetHandler.ListComment))
-			contentAPIRouter.POST("/sheets/comments", s.wrapHandler(s.ContentAPISheetHandler.CreateComment))
-
-			contentAPIRouter.GET("/links", s.wrapHandler(s.ContentAPILinkHandler.ListLinks))
-			contentAPIRouter.GET("/links/team_view", s.wrapHandler(s.ContentAPILinkHandler.LinkTeamVO))
-
-			contentAPIRouter.GET("/options/comment", s.wrapHandler(s.ContentAPIOptionHandler.Comment))
-
-			contentAPIRouter.POST("/comments/:commentID/likes", s.wrapHandler(s.ContentAPICommentHandler.Like))
+			s.registerContentHumaAPI(contentHumaAPI)
 		}
 	}
 

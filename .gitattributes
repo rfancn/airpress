@@ -1,0 +1,13 @@
+# 1. 默认所有文本文件自动识别，并强制统一使用 LF (Linux风格)
+* text=auto eol=lf
+
+# 2. 强制 Shell 脚本使用 LF，防止在 WSL 中执行报错
+*.sh text eol=lf
+
+# 3. Windows 批处理文件强制使用 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 4. 二进制文件不进行任何换行符转换
+*.png binary
+*.jpg binary

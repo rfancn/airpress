@@ -1,12 +1,10 @@
 package api
 
 import (
+	"context"
 	"html/template"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/rfancn/airpress/consts"
-	"github.com/rfancn/airpress/handler/binding"
 	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/entity"
 	"github.com/rfancn/airpress/model/param"
@@ -38,11 +36,20 @@ func NewJournalHandler(
 	}
 }
 
-func (j *JournalHandler) ListJournal(ctx *gin.Context) (interface{}, error) {
-	var journalQuery param.JournalQuery
-	err := ctx.ShouldBindWith(&journalQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+// ListJournalInput 日志列表查询输入。
+type ListJournalInput struct {
+	Page     int    `query:"page" doc:"页码"`
+	PageSize int    `query:"size" doc:"每页数量"`
+	Keyword  string `query:"keyword" doc:"关键词"`
+}
+
+// ListJournal 获取日志列表。
+func (j *JournalHandler) ListJournal(ctx context.Context, in *ListJournalInput) (*dto.HumaOut[*dto.Page], error) {
+	journalQuery := param.JournalQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: in.PageSize},
+	}
+	if in.Keyword != "" {
+		journalQuery.Keyword = &in.Keyword
 	}
 	journalQuery.Sort = &param.Sort{
 		Fields: []string{"createTime,desc"},
@@ -50,166 +57,167 @@ func (j *JournalHandler) ListJournal(ctx *gin.Context) (interface{}, error) {
 	journalQuery.JournalType = consts.JournalTypePublic.Ptr()
 	journals, totalCount, err := j.JournalService.ListJournal(ctx, journalQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	journalDTOs, err := j.JournalService.ConvertToWithCommentDTOList(ctx, journals)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	return dto.NewPage(journalDTOs, totalCount, journalQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(journalDTOs, totalCount, journalQuery.Page))
 }
 
-func (j *JournalHandler) GetJournal(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
+// GetJournalInput 日志详情查询输入。
+type GetJournalInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+}
+
+// GetJournal 获取日志详情。
+func (j *JournalHandler) GetJournal(ctx context.Context, in *GetJournalInput) (*dto.HumaOut[*dto.JournalWithComment], error) {
+	journals, err := j.JournalService.GetByJournalIDs(ctx, []int32{in.JournalID})
 	if err != nil {
-		return nil, err
-	}
-	journals, err := j.JournalService.GetByJournalIDs(ctx, []int32{journalID})
-	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.JournalWithComment](err)
 	}
 	if len(journals) == 0 {
-		return nil, xerr.WithStatus(nil, xerr.StatusBadRequest)
+		return dto.HumaErr[*dto.JournalWithComment](xerr.WithStatus(nil, xerr.StatusBadRequest))
 	}
-	journalDTOs, err := j.JournalService.ConvertToWithCommentDTOList(ctx, []*entity.Journal{journals[journalID]})
+	journalDTOs, err := j.JournalService.ConvertToWithCommentDTOList(ctx, []*entity.Journal{journals[in.JournalID]})
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.JournalWithComment](err)
 	}
-	return journalDTOs[0], nil
+	return dto.HumaOK(journalDTOs[0])
 }
 
-func (j *JournalHandler) ListTopComment(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
-	if err != nil {
-		return nil, err
-	}
+// ListTopCommentInput 获取顶级评论输入。
+type ListTopCommentInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+	Page      int   `query:"page" doc:"页码"`
+}
+
+// ListTopComment 获取日志的顶级评论分页列表。
+func (j *JournalHandler) ListTopComment(ctx context.Context, in *ListTopCommentInput) (*dto.HumaOut[*dto.Page], error) {
 	pageSize := j.OptionService.GetOrByDefault(ctx, property.CommentPageSize).(int)
 
-	commentQuery := param.CommentQuery{}
-	err = ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	if commentQuery.Sort != nil && len(commentQuery.Fields) > 0 {
-		commentQuery.Sort = &param.Sort{
+	commentQuery := param.CommentQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: pageSize},
+		Sort: &param.Sort{
 			Fields: []string{"createTime,desc"},
-		}
+		},
 	}
-	commentQuery.ContentID = &journalID
+	commentQuery.ContentID = &in.JournalID
 	commentQuery.Keyword = nil
 	commentQuery.CommentStatus = consts.CommentStatusPublished.Ptr()
-	commentQuery.PageSize = pageSize
 	commentQuery.ParentID = util.Int32Ptr(0)
 
 	comments, totalCount, err := j.JournalCommentService.Page(ctx, commentQuery, consts.CommentTypeJournal)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	_ = j.JournalCommentAssembler.ClearSensitiveField(ctx, comments)
 	commenVOs, err := j.JournalCommentAssembler.ConvertToWithHasChildren(ctx, comments)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	return dto.NewPage(commenVOs, totalCount, commentQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(commenVOs, totalCount, commentQuery.Page))
 }
 
-func (j *JournalHandler) ListChildren(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
+// ListChildrenInput 获取子评论输入。
+type ListChildrenInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+	ParentID  int32 `path:"parentID" doc:"父评论ID"`
+}
+
+// ListChildren 获取指定评论的子评论列表。
+func (j *JournalHandler) ListChildren(ctx context.Context, in *ListChildrenInput) (*dto.HumaOut[[]*dto.Comment], error) {
+	children, err := j.JournalCommentService.GetChildren(ctx, in.ParentID, in.JournalID, consts.CommentTypeJournal)
 	if err != nil {
-		return nil, err
-	}
-	parentID, err := util.ParamInt32(ctx, "parentID")
-	if err != nil {
-		return nil, err
-	}
-	children, err := j.JournalCommentService.GetChildren(ctx, parentID, journalID, consts.CommentTypeJournal)
-	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*dto.Comment](err)
 	}
 	_ = j.JournalCommentAssembler.ClearSensitiveField(ctx, children)
-	return j.JournalCommentAssembler.ConvertToDTOList(ctx, children)
+	comments, err := j.JournalCommentAssembler.ConvertToDTOList(ctx, children)
+	if err != nil {
+		return dto.HumaErr[[]*dto.Comment](err)
+	}
+	return dto.HumaOK(comments)
 }
 
-func (j *JournalHandler) ListCommentTree(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
-	if err != nil {
-		return nil, err
-	}
+// ListCommentTreeInput 获取评论树输入。
+type ListCommentTreeInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+	Page      int   `query:"page" doc:"页码"`
+}
+
+// ListCommentTree 获取日志的评论树形分页列表。
+func (j *JournalHandler) ListCommentTree(ctx context.Context, in *ListCommentTreeInput) (*dto.HumaOut[*dto.Page], error) {
 	pageSize := j.OptionService.GetOrByDefault(ctx, property.CommentPageSize).(int)
 
-	commentQuery := param.CommentQuery{}
-	err = ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	if commentQuery.Sort != nil && len(commentQuery.Fields) > 0 {
-		commentQuery.Sort = &param.Sort{
+	commentQuery := param.CommentQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: pageSize},
+		Sort: &param.Sort{
 			Fields: []string{"createTime,desc"},
-		}
+		},
 	}
-	commentQuery.ContentID = &journalID
+	commentQuery.ContentID = &in.JournalID
 	commentQuery.Keyword = nil
 	commentQuery.CommentStatus = consts.CommentStatusPublished.Ptr()
-	commentQuery.PageSize = pageSize
 	commentQuery.ParentID = util.Int32Ptr(0)
 
-	allComments, err := j.JournalCommentService.GetByContentID(ctx, journalID, consts.CommentTypeJournal, commentQuery.Sort)
+	allComments, err := j.JournalCommentService.GetByContentID(ctx, in.JournalID, consts.CommentTypeJournal, commentQuery.Sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	_ = j.JournalCommentAssembler.ClearSensitiveField(ctx, allComments)
 	commentVOs, total, err := j.JournalCommentAssembler.PageConvertToVOs(ctx, allComments, commentQuery.Page)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	return dto.NewPage(commentVOs, total, commentQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(commentVOs, total, commentQuery.Page))
 }
 
-func (j *JournalHandler) ListComment(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
-	if err != nil {
-		return nil, err
-	}
+// ListCommentInput 获取评论列表输入。
+type ListCommentInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+	Page      int   `query:"page" doc:"页码"`
+}
+
+// ListComment 获取日志的评论平铺分页列表。
+func (j *JournalHandler) ListComment(ctx context.Context, in *ListCommentInput) (*dto.HumaOut[*dto.Page], error) {
 	pageSize := j.OptionService.GetOrByDefault(ctx, property.CommentPageSize).(int)
 
-	commentQuery := param.CommentQuery{}
-	err = ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	if commentQuery.Sort != nil && len(commentQuery.Fields) > 0 {
-		commentQuery.Sort = &param.Sort{
+	commentQuery := param.CommentQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: pageSize},
+		Sort: &param.Sort{
 			Fields: []string{"createTime,desc"},
-		}
+		},
 	}
-	commentQuery.ContentID = &journalID
+	commentQuery.ContentID = &in.JournalID
 	commentQuery.Keyword = nil
 	commentQuery.CommentStatus = consts.CommentStatusPublished.Ptr()
-	commentQuery.PageSize = pageSize
 	commentQuery.ParentID = util.Int32Ptr(0)
 
 	comments, total, err := j.JournalCommentService.Page(ctx, commentQuery, consts.CommentTypeJournal)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	_ = j.JournalCommentAssembler.ClearSensitiveField(ctx, comments)
 	result, err := j.JournalCommentAssembler.ConvertToWithParentVO(ctx, comments)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	return dto.NewPage(result, total, commentQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(result, total, commentQuery.Page))
 }
 
-func (j *JournalHandler) CreateComment(ctx *gin.Context) (interface{}, error) {
-	p := param.Comment{}
-	err := ctx.ShouldBindJSON(&p)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
+// CreateCommentInput 创建评论输入。
+type CreateCommentInput struct {
+	Body param.Comment `doc:"评论内容"`
+}
+
+// CreateComment 创建日志评论。
+func (j *JournalHandler) CreateComment(ctx context.Context, in *CreateCommentInput) (*dto.HumaOut[*dto.Comment], error) {
+	p := in.Body
 	if p.AuthorURL != "" {
-		err = util.Validate.Var(p.AuthorURL, "http_url")
+		err := util.Validate.Var(p.AuthorURL, "http_url")
 		if err != nil {
-			return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+			return dto.HumaErr[*dto.Comment](xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error"))
 		}
 	}
 	p.Author = template.HTMLEscapeString(p.Author)
@@ -219,19 +227,25 @@ func (j *JournalHandler) CreateComment(ctx *gin.Context) (interface{}, error) {
 	p.CommentType = consts.CommentTypeJournal
 	result, err := j.JournalCommentService.CreateBy(ctx, &p)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Comment](err)
 	}
-	return j.JournalCommentAssembler.ConvertToDTO(ctx, result)
+	comment, err := j.JournalCommentAssembler.ConvertToDTO(ctx, result)
+	if err != nil {
+		return dto.HumaErr[*dto.Comment](err)
+	}
+	return dto.HumaOK(comment)
 }
 
-func (j *JournalHandler) Like(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
+// LikeJournalInput 日志点赞输入。
+type LikeJournalInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+}
+
+// Like 日志点赞。
+func (j *JournalHandler) Like(ctx context.Context, in *LikeJournalInput) (*dto.HumaOut[any], error) {
+	err := j.JournalService.IncreaseLike(ctx, in.JournalID)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[any](err)
 	}
-	err = j.JournalService.IncreaseLike(ctx, journalID)
-	if err != nil {
-		return nil, err
-	}
-	return nil, err
+	return dto.HumaOK[any](nil)
 }
