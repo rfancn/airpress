@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"path/filepath"
 	"time"
 
@@ -110,7 +111,13 @@ func (s *Server) RegisterRouters() {
 			contentRouter.GET("/sitemap.xml", s.wrapTextHandler(s.FeedHandler.SitemapXML))
 			contentRouter.GET("/sitemap.html", s.wrapHTMLHandler(s.FeedHandler.SitemapHTML))
 
-			contentRouter.GET("/version", s.wrapHandler(s.ViewHandler.Version))
+			// 公开 huma API：/version（挂在根路径，无 /api 前缀）
+			contentRootHumaAPI, contentRootPrefix := newHumaAPI(s.Router, contentRouter, "AirPress Content Root API")
+			humaAPIs = append(humaAPIs, contentRootHumaAPI)
+			humaPrefixes = append(humaPrefixes, contentRootPrefix)
+			huma.Register(contentRootHumaAPI, huma.Operation{Method: http.MethodGet, Path: "/version", Summary: "版本号", Tags: []string{"content"}}, s.ViewHandler.Version)
+			// 已迁移到 huma：GET /version
+			// contentRouter.GET("/version", s.wrapHandler(s.ViewHandler.Version))
 			contentRouter.GET("/install", s.ViewHandler.Install)
 			contentRouter.GET("/logo", s.wrapHandler(s.ViewHandler.Logo))
 			contentRouter.GET("/favicon", s.wrapHandler(s.ViewHandler.Favicon))

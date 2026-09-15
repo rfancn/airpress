@@ -1,6 +1,7 @@
 package content
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,7 @@ import (
 	"github.com/rfancn/airpress/consts"
 	"github.com/rfancn/airpress/handler/binding"
 	"github.com/rfancn/airpress/handler/content/authentication"
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/model/property"
 	"github.com/rfancn/airpress/service"
@@ -51,8 +53,12 @@ func (v *ViewHandler) Admin(ctx *gin.Context) (interface{}, error) {
 	return nil, nil
 }
 
-func (v *ViewHandler) Version(ctx *gin.Context) (interface{}, error) {
-	return consts.AirPressVersion, nil
+// VersionInput 版本查询无输入参数。
+type VersionInput struct{}
+
+// Version 返回当前版本号。
+func (v *ViewHandler) Version(ctx context.Context, _ *VersionInput) (*dto.HumaOut[string], error) {
+	return dto.HumaOK(consts.AirPressVersion)
 }
 
 func (v *ViewHandler) Install(ctx *gin.Context) {
