@@ -14,41 +14,42 @@ import (
 
 // registerAdminBase 注册 authRouter 下无 subgroup 的直接路由。
 func (s *Server) registerAdminBase(rg *gin.RouterGroup, api huma.API) {
-	rg.POST("/logout", s.wrapHandler(s.AdminHandler.LogOut))
-	rg.POST("/password/code", s.wrapHandler(s.AdminHandler.SendResetCode))
-	rg.GET("/environments", s.wrapHandler(s.AdminHandler.GetEnvironments))
-	rg.GET("/airpress/logfile", s.wrapHandler(s.AdminHandler.GetLogFiles))
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/logout", Summary: "管理员登出", Tags: []string{"admin/base"}}, s.AdminHandler.LogOut)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/password/code", Summary: "发送重置密码验证码", Tags: []string{"admin/base"}}, s.AdminHandler.SendResetCode)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/environments", Summary: "获取环境信息", Tags: []string{"admin/base"}}, s.AdminHandler.GetEnvironments)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/airpress/logfile", Summary: "获取日志文件", Tags: []string{"admin/base"}}, s.AdminHandler.GetLogFiles)
 }
 
 // registerAdminAttachment 注册 /attachments 相关路由。
 func (s *Server) registerAdminAttachment(rg *gin.RouterGroup, api huma.API) {
-	attachmentRouter := rg.Group("/attachments")
-	attachmentRouter.POST("/upload", s.wrapHandler(s.AttachmentHandler.UploadAttachment))
-	attachmentRouter.POST("/uploads", s.wrapHandler(s.AttachmentHandler.UploadAttachments))
-	attachmentRouter.DELETE("/:id", s.wrapHandler(s.AttachmentHandler.DeleteAttachment))
-	attachmentRouter.DELETE("", s.wrapHandler(s.AttachmentHandler.DeleteAttachmentInBatch))
-	attachmentRouter.GET("", s.wrapHandler(s.AttachmentHandler.QueryAttachment))
-	attachmentRouter.GET("/:id", s.wrapHandler(s.AttachmentHandler.GetAttachmentByID))
-	attachmentRouter.PUT("/:id", s.wrapHandler(s.AttachmentHandler.UpdateAttachment))
-	attachmentRouter.GET("/media_types", s.wrapHandler(s.AttachmentHandler.GetAllMediaType))
-	attachmentRouter.GET("types", s.wrapHandler(s.AttachmentHandler.GetAllTypes))
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/attachments/upload", Summary: "上传单个附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.UploadAttachment)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/attachments/uploads", Summary: "批量上传附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.UploadAttachments)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/attachments/{id}", Summary: "按ID删除附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.DeleteAttachment)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/attachments", Summary: "批量删除附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.DeleteAttachmentInBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/attachments", Summary: "分页查询附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.QueryAttachment)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/attachments/{id}", Summary: "按ID获取附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.GetAttachmentByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/attachments/{id}", Summary: "更新附件", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.UpdateAttachment)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/attachments/media_types", Summary: "获取所有媒体类型", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.GetAllMediaType)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/attachments/types", Summary: "获取所有附件类型", Tags: []string{"admin/attachments"}}, s.AttachmentHandler.GetAllTypes)
 }
 
 // registerAdminBackup 注册 /backups 相关路由。
 func (s *Server) registerAdminBackup(rg *gin.RouterGroup, api huma.API) {
+	// huma JSON API
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/backups/work-dir", Summary: "全站备份", Tags: []string{"admin/backups"}}, s.BackupHandler.BackupWholeSite)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/backups/work-dir", Summary: "列出全站备份", Tags: []string{"admin/backups"}}, s.BackupHandler.ListBackups)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/backups/work-dir", Summary: "删除全站备份", Tags: []string{"admin/backups"}}, s.BackupHandler.DeleteBackups)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/backups/data", Summary: "导出数据", Tags: []string{"admin/backups"}}, s.BackupHandler.ExportData)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/backups/data", Summary: "删除数据文件", Tags: []string{"admin/backups"}}, s.BackupHandler.DeleteDataFile)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/backups/markdown/export", Summary: "导出 Markdown", Tags: []string{"admin/backups"}}, s.BackupHandler.ExportMarkdown)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/backups/markdown/import", Summary: "导入 Markdown", Tags: []string{"admin/backups"}}, s.BackupHandler.ImportMarkdown)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/backups/markdown/fetch", Summary: "获取 Markdown 备份", Tags: []string{"admin/backups"}}, s.BackupHandler.GetMarkDownBackup)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/backups/markdown/export", Summary: "列出 Markdown 备份", Tags: []string{"admin/backups"}}, s.BackupHandler.ListMarkdowns)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/backups/markdown/export", Summary: "删除 Markdown 备份", Tags: []string{"admin/backups"}}, s.BackupHandler.DeleteMarkdowns)
+	// gin 文件流路由（保持 gin 不变）
 	backupRouter := rg.Group("/backups")
-	backupRouter.POST("/work-dir", s.wrapHandler(s.BackupHandler.BackupWholeSite))
-	backupRouter.GET("/work-dir", s.wrapHandler(s.BackupHandler.ListBackups))
 	backupRouter.GET("/work-dir/*path", s.BackupHandler.HandleWorkDir)
-	backupRouter.DELETE("/work-dir", s.wrapHandler(s.BackupHandler.DeleteBackups))
-	backupRouter.POST("/data", s.wrapHandler(s.BackupHandler.ExportData))
-	backupRouter.DELETE("/data", s.wrapHandler(s.BackupHandler.DeleteDataFile))
 	backupRouter.GET("/data/*path", s.BackupHandler.HandleData)
-	backupRouter.POST("/markdown/export", s.wrapHandler(s.BackupHandler.ExportMarkdown))
-	backupRouter.POST("/markdown/import", s.wrapHandler(s.BackupHandler.ImportMarkdown))
-	backupRouter.GET("/markdown/fetch", s.wrapHandler(s.BackupHandler.GetMarkDownBackup))
-	backupRouter.GET("/markdown/export", s.wrapHandler(s.BackupHandler.ListMarkdowns))
-	backupRouter.DELETE("/markdown/export", s.wrapHandler(s.BackupHandler.DeleteMarkdowns))
 	backupRouter.GET("/markdown/export/:filename", s.BackupHandler.DownloadMarkdown)
 }
 

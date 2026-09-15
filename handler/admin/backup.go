@@ -1,16 +1,15 @@
 package admin
 
 import (
-	"errors"
+	"context"
+	"mime/multipart"
 	"net/http"
 	"path"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 
 	"github.com/rfancn/airpress/config"
-	"github.com/rfancn/airpress/handler/trans"
 	"github.com/rfancn/airpress/log"
 	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
@@ -29,6 +28,153 @@ func NewBackupHandler(backupService service.BackupService) *BackupHandler {
 	}
 }
 
+// --- huma handlers (JSON API) ---
+
+// BackupWholeSiteInput 全站备份输入。
+type BackupWholeSiteInput struct {
+	Body []string `doc:"待备份项列表"`
+}
+
+// BackupWholeSite 全站备份。
+func (b *BackupHandler) BackupWholeSite(ctx context.Context, in *BackupWholeSiteInput) (*dto.HumaOut[*dto.BackupDTO], error) {
+	backupDTO, err := b.BackupService.BackupWholeSite(ctx, in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backupDTO)
+}
+
+// ListBackupsInput 列出全站备份无输入参数。
+type ListBackupsInput struct{}
+
+// ListBackups 列出全站备份。
+func (b *BackupHandler) ListBackups(ctx context.Context, _ *ListBackupsInput) (*dto.HumaOut[[]*dto.BackupDTO], error) {
+	backups, err := b.BackupService.ListFiles(ctx, config.BackupDir, service.WholeSite)
+	if err != nil {
+		return dto.HumaErr[[]*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backups)
+}
+
+// DeleteBackupsInput 删除全站备份输入。
+type DeleteBackupsInput struct {
+	Filename string `query:"filename" required:"true" doc:"文件名"`
+}
+
+// DeleteBackups 删除全站备份。
+func (b *BackupHandler) DeleteBackups(ctx context.Context, in *DeleteBackupsInput) (*dto.HumaOut[interface{}], error) {
+	err := b.BackupService.DeleteFile(ctx, config.BackupDir, in.Filename)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
+}
+
+// ExportDataInput 导出数据无输入参数。
+type ExportDataInput struct{}
+
+// ExportData 导出数据。
+func (b *BackupHandler) ExportData(ctx context.Context, _ *ExportDataInput) (*dto.HumaOut[*dto.BackupDTO], error) {
+	backupDTO, err := b.BackupService.ExportData(ctx)
+	if err != nil {
+		return dto.HumaErr[*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backupDTO)
+}
+
+// DeleteDataFileInput 删除数据文件输入。
+type DeleteDataFileInput struct {
+	Filename string `query:"filename" required:"true" doc:"文件名"`
+}
+
+// DeleteDataFile 删除数据文件。
+func (b *BackupHandler) DeleteDataFile(ctx context.Context, in *DeleteDataFileInput) (*dto.HumaOut[interface{}], error) {
+	err := b.BackupService.DeleteFile(ctx, config.DataExportDir, in.Filename)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
+}
+
+// ExportMarkdownInput 导出 Markdown 输入。
+type ExportMarkdownInput struct {
+	Body param.ExportMarkdown `doc:"Markdown 导出参数"`
+}
+
+// ExportMarkdown 导出 Markdown。
+func (b *BackupHandler) ExportMarkdown(ctx context.Context, in *ExportMarkdownInput) (*dto.HumaOut[*dto.BackupDTO], error) {
+	backupDTO, err := b.BackupService.ExportMarkdown(ctx, in.Body.NeedFrontMatter)
+	if err != nil {
+		return dto.HumaErr[*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backupDTO)
+}
+
+// ImportMarkdownInput 导入 Markdown 输入。
+type ImportMarkdownInput struct {
+	RawBody multipart.Form
+}
+
+// ImportMarkdown 导入 Markdown 文件。
+func (b *BackupHandler) ImportMarkdown(ctx context.Context, in *ImportMarkdownInput) (*dto.HumaOut[interface{}], error) {
+	files := in.RawBody.File["file"]
+	if len(files) == 0 {
+		return dto.HumaErr[interface{}](xerr.BadParam.New("上传文件错误").WithStatus(xerr.StatusBadRequest))
+	}
+	fileHeader := files[0]
+	filenameExt := path.Ext(fileHeader.Filename)
+	if filenameExt != ".md" && filenameExt != ".markdown" && filenameExt != ".mdown" {
+		return dto.HumaErr[interface{}](xerr.BadParam.New("Unsupported format").WithStatus(xerr.StatusBadRequest))
+	}
+	err := b.BackupService.ImportMarkdown(ctx, fileHeader)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
+}
+
+// GetMarkDownBackupInput 获取 Markdown 备份输入。
+type GetMarkDownBackupInput struct {
+	Filename string `query:"filename" required:"true" doc:"文件名"`
+}
+
+// GetMarkDownBackup 获取 Markdown 备份。
+func (b *BackupHandler) GetMarkDownBackup(ctx context.Context, in *GetMarkDownBackupInput) (*dto.HumaOut[*dto.BackupDTO], error) {
+	backupDTO, err := b.BackupService.GetBackup(ctx, filepath.Join(config.BackupMarkdownDir, in.Filename), service.Markdown)
+	if err != nil {
+		return dto.HumaErr[*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backupDTO)
+}
+
+// ListMarkdownsInput 列出 Markdown 备份无输入参数。
+type ListMarkdownsInput struct{}
+
+// ListMarkdowns 列出 Markdown 备份。
+func (b *BackupHandler) ListMarkdowns(ctx context.Context, _ *ListMarkdownsInput) (*dto.HumaOut[[]*dto.BackupDTO], error) {
+	backups, err := b.BackupService.ListFiles(ctx, config.BackupMarkdownDir, service.Markdown)
+	if err != nil {
+		return dto.HumaErr[[]*dto.BackupDTO](err)
+	}
+	return dto.HumaOK(backups)
+}
+
+// DeleteMarkdownsInput 删除 Markdown 备份输入。
+type DeleteMarkdownsInput struct {
+	Filename string `query:"filename" required:"true" doc:"文件名"`
+}
+
+// DeleteMarkdowns 删除 Markdown 备份。
+func (b *BackupHandler) DeleteMarkdowns(ctx context.Context, in *DeleteMarkdownsInput) (*dto.HumaOut[interface{}], error) {
+	err := b.BackupService.DeleteFile(ctx, config.BackupMarkdownDir, in.Filename)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
+}
+
+// --- gin handlers (文件流，保持 gin 不变) ---
+
 func (b *BackupHandler) GetWorkDirBackup(ctx *gin.Context) (interface{}, error) {
 	filename, err := util.MustGetQueryString(ctx, "filename")
 	if err != nil {
@@ -45,34 +191,12 @@ func (b *BackupHandler) GetDataBackup(ctx *gin.Context) (interface{}, error) {
 	return b.BackupService.GetBackup(ctx, filepath.Join(config.DataExportDir, filename), service.JSONData)
 }
 
-func (b *BackupHandler) GetMarkDownBackup(ctx *gin.Context) (interface{}, error) {
-	filename, err := util.MustGetQueryString(ctx, "filename")
-	if err != nil {
-		return nil, err
-	}
-	return b.BackupService.GetBackup(ctx, filepath.Join(config.BackupMarkdownDir, filename), service.Markdown)
-}
-
-func (b *BackupHandler) BackupWholeSite(ctx *gin.Context) (interface{}, error) {
-	toBackupItems := make([]string, 0)
-	err := ctx.ShouldBindJSON(&toBackupItems)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest)
-	}
-
-	return b.BackupService.BackupWholeSite(ctx, toBackupItems)
-}
-
-func (b *BackupHandler) ListBackups(ctx *gin.Context) (interface{}, error) {
-	return b.BackupService.ListFiles(ctx, config.BackupDir, service.WholeSite)
-}
-
 func (b *BackupHandler) ListToBackupItems(ctx *gin.Context) (interface{}, error) {
 	return b.BackupService.ListToBackupItems(ctx)
+}
+
+func (b *BackupHandler) ListExportData(ctx *gin.Context) (interface{}, error) {
+	return b.BackupService.ListFiles(ctx, config.DataExportDir, service.JSONData)
 }
 
 func (b *BackupHandler) HandleWorkDir(ctx *gin.Context) {
@@ -106,30 +230,6 @@ func (b *BackupHandler) DownloadBackups(ctx *gin.Context) {
 	ctx.File(filePath)
 }
 
-func (b *BackupHandler) DeleteBackups(ctx *gin.Context) (interface{}, error) {
-	filename, err := util.MustGetQueryString(ctx, "filename")
-	if err != nil {
-		return nil, err
-	}
-	return nil, b.BackupService.DeleteFile(ctx, config.BackupDir, filename)
-}
-
-func (b *BackupHandler) ImportMarkdown(ctx *gin.Context) (interface{}, error) {
-	fileHeader, err := ctx.FormFile("file")
-	if err != nil {
-		return nil, xerr.WithMsg(err, "上传文件错误").WithStatus(xerr.StatusBadRequest)
-	}
-	filenameExt := path.Ext(fileHeader.Filename)
-	if filenameExt != ".md" && filenameExt != ".markdown" && filenameExt != ".mdown" {
-		return nil, xerr.WithMsg(err, "Unsupported format").WithStatus(xerr.StatusBadRequest)
-	}
-	return nil, b.BackupService.ImportMarkdown(ctx, fileHeader)
-}
-
-func (b *BackupHandler) ExportData(ctx *gin.Context) (interface{}, error) {
-	return b.BackupService.ExportData(ctx)
-}
-
 func (b *BackupHandler) HandleData(ctx *gin.Context) {
 	path := ctx.Request.URL.Path
 	if path == "/api/admin/backups/data/fetch" {
@@ -141,10 +241,6 @@ func (b *BackupHandler) HandleData(ctx *gin.Context) {
 		return
 	}
 	b.DownloadData(ctx)
-}
-
-func (b *BackupHandler) ListExportData(ctx *gin.Context) (interface{}, error) {
-	return b.BackupService.ListFiles(ctx, config.DataExportDir, service.JSONData)
 }
 
 func (b *BackupHandler) DownloadData(ctx *gin.Context) {
@@ -162,39 +258,6 @@ func (b *BackupHandler) DownloadData(ctx *gin.Context) {
 		ctx.JSON(status, &dto.BaseDTO[any]{Status: status, Message: xerr.GetMessage(err)})
 	}
 	ctx.File(filePath)
-}
-
-func (b *BackupHandler) DeleteDataFile(ctx *gin.Context) (interface{}, error) {
-	filename, ok := ctx.GetQuery("filename")
-	if !ok || filename == "" {
-		return nil, xerr.BadParam.New("no filename param").WithStatus(xerr.StatusBadRequest).WithMsg("no filename param")
-	}
-	return nil, b.BackupService.DeleteFile(ctx, config.DataExportDir, filename)
-}
-
-func (b *BackupHandler) ExportMarkdown(ctx *gin.Context) (interface{}, error) {
-	var exportMarkdownParam param.ExportMarkdown
-	err := ctx.ShouldBindJSON(&exportMarkdownParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest)
-	}
-	return b.BackupService.ExportMarkdown(ctx, exportMarkdownParam.NeedFrontMatter)
-}
-
-func (b *BackupHandler) ListMarkdowns(ctx *gin.Context) (interface{}, error) {
-	return b.BackupService.ListFiles(ctx, config.BackupMarkdownDir, service.Markdown)
-}
-
-func (b *BackupHandler) DeleteMarkdowns(ctx *gin.Context) (interface{}, error) {
-	filename, err := util.MustGetQueryString(ctx, "filename")
-	if err != nil {
-		return nil, err
-	}
-	return nil, b.BackupService.DeleteFile(ctx, config.BackupMarkdownDir, filename)
 }
 
 func (b *BackupHandler) DownloadMarkdown(ctx *gin.Context) {
