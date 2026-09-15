@@ -2,8 +2,8 @@ package handler
 
 import (
 	"net/http"
-	"path"
 	"reflect"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
@@ -25,36 +25,43 @@ func (s *Server) adminAuthUserMiddleware(ctx huma.Context, next func(huma.Contex
 	next(ctx)
 }
 
-// schemaNamer 在 huma 默认命名基础上加包名前缀，避免跨包同名类型冲突。
-// 项目里 param/dto/vo/entity 包存在大量同名类型（如 Comment、Post），
-// 而 huma 默认 namer 只取简单类型名会导致 "duplicate name" panic。
-// 例：param.Comment -> ParamComment，dto.Comment -> DtoComment。
+// schemaNamer 生成 OpenAPI schema 名称。
+// huma 默认 namer 只取类型简单名，且对泛型实例化会丢失类型参数区分
+// （如 HumaOut[*entity.Comment] 与 HumaOut[*dto.Comment] 都得到 HumaOutComment），
+// 导致 "duplicate name" panic。改用完整类型字符串（reflect.Type.String()）并
+// 净化非法字符，保证跨包、跨泛型实例都唯一。
+// 注意：huma 传入的 t 可能是指针类型，而指针类型的 Name() 为空，
+// 判断是否为匿名类型前必须先 deref，否则会误用 hint（导致所有类型同名）。
 func schemaNamer(t reflect.Type, hint string) string {
+	name := t.String()
 	base := t
-	for base.Kind() == reflect.Pointer || base.Kind() == reflect.Slice || base.Kind() == reflect.Array {
+	for base.Kind() == reflect.Pointer {
 		base = base.Elem()
 	}
-	name := huma.DefaultSchemaNamer(t, hint)
-	if base.Name() == "" {
-		return name
+	if base.Name() == "" && hint != "" {
+		name = hint
 	}
-	pkg := path.Base(base.PkgPath())
-	if pkg == "" || pkg == "." {
-		return name
-	}
-	return upperFirst(pkg) + name
+	// 去掉 module 路径前缀，让 schema 名更短可读（如 dto.BaseDTO[vo.PostDetailVO]）
+	name = strings.ReplaceAll(name, "github.com/rfancn/airpress/", "")
+	return sanitizeSchemaName(name)
 }
 
-// upperFirst 将字符串首字母转为大写。
-func upperFirst(s string) string {
-	if s == "" {
-		return s
+// sanitizeSchemaName 将类型字符串净化为合法的 schema 名。
+// 注意：每个非字母数字字符都替换为下划线，**不合并也不裁剪**——
+// 否则 `BaseDTO[*T]`、`BaseDTO[[]*T]`、`BaseDTO[T]` 会净化为同一名字导致冲突。
+func sanitizeSchemaName(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
 	}
-	r := []rune(s)
-	if r[0] >= 'a' && r[0] <= 'z' {
-		r[0] -= 'a' - 'A'
+	if b.Len() == 0 {
+		return "Schema"
 	}
-	return string(r)
+	return b.String()
 }
 
 // newHumaAPI 在指定的 gin group 上创建 huma API。
