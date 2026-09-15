@@ -1,17 +1,11 @@
 package admin
 
 import (
-	"errors"
+	"context"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/binding"
-	"github.com/rfancn/airpress/handler/trans"
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type LinkHandler struct {
@@ -24,82 +18,92 @@ func NewLinkHandler(linkService service.LinkService) *LinkHandler {
 	}
 }
 
-func (l *LinkHandler) ListLinks(ctx *gin.Context) (interface{}, error) {
-	sort := param.Sort{}
-	err := ctx.ShouldBindWith(&sort, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithMsg(err, "sort parameter error").WithStatus(xerr.StatusBadRequest)
-	}
-	if len(sort.Fields) == 0 {
-		sort.Fields = append(sort.Fields, "team,desc", "priority,asc")
+// ListLinksInput 链接列表查询输入。
+type ListLinksInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
+}
+
+// ListLinks 获取链接列表。
+func (l *LinkHandler) ListLinks(ctx context.Context, in *ListLinksInput) (*dto.HumaOut[[]*dto.Link], error) {
+	fields := in.Sort
+	if len(fields) == 0 {
+		fields = []string{"team,desc", "priority,asc"}
 	} else {
-		sort.Fields = append(sort.Fields, "priority,asc")
+		fields = append(fields, "priority,asc")
 	}
-	links, err := l.LinkService.List(ctx, &sort)
+	sort := &param.Sort{Fields: fields}
+	links, err := l.LinkService.List(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*dto.Link](err)
 	}
-	return l.LinkService.ConvertToDTOs(ctx, links), nil
+	return dto.HumaOK(l.LinkService.ConvertToDTOs(ctx, links))
 }
 
-func (l *LinkHandler) GetLinkByID(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
-	if err != nil {
-		return nil, err
-	}
-	link, err := l.LinkService.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return l.LinkService.ConvertToDTO(ctx, link), nil
+// GetLinkByIDInput 链接详情查询输入。
+type GetLinkByIDInput struct {
+	ID int32 `path:"id" doc:"链接ID"`
 }
 
-func (l *LinkHandler) CreateLink(ctx *gin.Context) (interface{}, error) {
-	linkParam := &param.Link{}
-	err := ctx.ShouldBindJSON(linkParam)
+// GetLinkByID 获取链接详情。
+func (l *LinkHandler) GetLinkByID(ctx context.Context, in *GetLinkByIDInput) (*dto.HumaOut[*dto.Link], error) {
+	link, err := l.LinkService.GetByID(ctx, in.ID)
 	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
+		return dto.HumaErr[*dto.Link](err)
 	}
-	link, err := l.LinkService.Create(ctx, linkParam)
-	if err != nil {
-		return nil, err
-	}
-	return l.LinkService.ConvertToDTO(ctx, link), nil
+	return dto.HumaOK(l.LinkService.ConvertToDTO(ctx, link))
 }
 
-func (l *LinkHandler) UpdateLink(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
-	if err != nil {
-		return nil, err
-	}
-	linkParam := &param.Link{}
-	err = ctx.ShouldBindJSON(linkParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
-	link, err := l.LinkService.Update(ctx, id, linkParam)
-	if err != nil {
-		return nil, err
-	}
-	return l.LinkService.ConvertToDTO(ctx, link), nil
+// CreateLinkInput 创建链接输入。
+type CreateLinkInput struct {
+	Body param.Link `doc:"链接参数"`
 }
 
-func (l *LinkHandler) DeleteLink(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
+// CreateLink 创建链接。
+func (l *LinkHandler) CreateLink(ctx context.Context, in *CreateLinkInput) (*dto.HumaOut[*dto.Link], error) {
+	link, err := l.LinkService.Create(ctx, &in.Body)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Link](err)
 	}
-	return nil, l.LinkService.Delete(ctx, id)
+	return dto.HumaOK(l.LinkService.ConvertToDTO(ctx, link))
 }
 
-func (l *LinkHandler) ListLinkTeams(ctx *gin.Context) (interface{}, error) {
-	return l.LinkService.ListTeams(ctx)
+// UpdateLinkInput 更新链接输入。
+type UpdateLinkInput struct {
+	ID   int32      `path:"id" doc:"链接ID"`
+	Body param.Link `doc:"链接参数"`
+}
+
+// UpdateLink 更新链接。
+func (l *LinkHandler) UpdateLink(ctx context.Context, in *UpdateLinkInput) (*dto.HumaOut[*dto.Link], error) {
+	link, err := l.LinkService.Update(ctx, in.ID, &in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.Link](err)
+	}
+	return dto.HumaOK(l.LinkService.ConvertToDTO(ctx, link))
+}
+
+// DeleteLinkInput 删除链接输入。
+type DeleteLinkInput struct {
+	ID int32 `path:"id" doc:"链接ID"`
+}
+
+// DeleteLink 删除链接。
+func (l *LinkHandler) DeleteLink(ctx context.Context, in *DeleteLinkInput) (*dto.HumaOut[interface{}], error) {
+	err := l.LinkService.Delete(ctx, in.ID)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
+}
+
+// ListLinkTeamsInput 链接团队列表查询无输入参数。
+type ListLinkTeamsInput struct{}
+
+// ListLinkTeams 获取链接团队列表。
+func (l *LinkHandler) ListLinkTeams(ctx context.Context, _ *ListLinkTeamsInput) (*dto.HumaOut[[]string], error) {
+	data, err := l.LinkService.ListTeams(ctx)
+	if err != nil {
+		return dto.HumaErr[[]string](err)
+	}
+	return dto.HumaOK(data)
 }

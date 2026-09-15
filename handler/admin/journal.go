@@ -1,18 +1,13 @@
 package admin
 
 import (
-	"errors"
+	"context"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/binding"
-	"github.com/rfancn/airpress/handler/trans"
+	"github.com/rfancn/airpress/consts"
 	"github.com/rfancn/airpress/model/dto"
+	"github.com/rfancn/airpress/model/entity"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type JournalHandler struct {
@@ -25,29 +20,50 @@ func NewJournalHandler(journalService service.JournalService) *JournalHandler {
 	}
 }
 
-func (j *JournalHandler) ListJournal(ctx *gin.Context) (interface{}, error) {
-	var journalQuery param.JournalQuery
-	err := ctx.ShouldBindWith(&journalQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+// ListJournalInput 日志列表查询输入。
+type ListJournalInput struct {
+	Page        int    `query:"page" doc:"页码"`
+	Size        int    `query:"size" doc:"每页数量"`
+	Keyword     string `query:"keyword" doc:"关键词"`
+	JournalType int32  `query:"journalType" doc:"日志类型"`
+}
+
+// ListJournal 获取日志分页列表。
+func (j *JournalHandler) ListJournal(ctx context.Context, in *ListJournalInput) (*dto.HumaOut[*dto.Page], error) {
+	journalQuery := param.JournalQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: in.Size},
+	}
+	// huma 不支持指针 query 参数，空串/0 视为未提供
+	if in.Keyword != "" {
+		journalQuery.Keyword = &in.Keyword
+	}
+	if in.JournalType != 0 {
+		jt := consts.JournalType(in.JournalType)
+		journalQuery.JournalType = &jt
 	}
 	journalQuery.Sort = &param.Sort{
 		Fields: []string{"createTime,desc"},
 	}
 	journals, totalCount, err := j.JournalService.ListJournal(ctx, journalQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
 	journalDTOs, err := j.JournalService.ConvertToWithCommentDTOList(ctx, journals)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	return dto.NewPage(journalDTOs, totalCount, journalQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(journalDTOs, totalCount, journalQuery.Page))
 }
 
-func (j *JournalHandler) ListLatestJournal(ctx *gin.Context) (interface{}, error) {
-	top, err := util.MustGetQueryInt(ctx, "top")
-	if err != nil {
+// ListLatestJournalInput 最新日志查询输入。
+type ListLatestJournalInput struct {
+	Top int `query:"top" doc:"获取数量"`
+}
+
+// ListLatestJournal 获取最新日志列表。
+func (j *JournalHandler) ListLatestJournal(ctx context.Context, in *ListLatestJournalInput) (*dto.HumaOut[[]*dto.JournalWithComment], error) {
+	top := in.Top
+	if top == 0 {
 		top = 10
 	}
 	journalQuery := param.JournalQuery{
@@ -56,53 +72,59 @@ func (j *JournalHandler) ListLatestJournal(ctx *gin.Context) (interface{}, error
 	}
 	journals, _, err := j.JournalService.ListJournal(ctx, journalQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*dto.JournalWithComment](err)
 	}
-	return j.JournalService.ConvertToWithCommentDTOList(ctx, journals)
+	journalDTOs, err := j.JournalService.ConvertToWithCommentDTOList(ctx, journals)
+	if err != nil {
+		return dto.HumaErr[[]*dto.JournalWithComment](err)
+	}
+	return dto.HumaOK(journalDTOs)
 }
 
-func (j *JournalHandler) CreateJournal(ctx *gin.Context) (interface{}, error) {
-	var journalParam param.Journal
-	err := ctx.ShouldBindJSON(&journalParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
+// CreateJournalInput 创建日志输入。
+type CreateJournalInput struct {
+	Body param.Journal `doc:"日志内容"`
+}
+
+// CreateJournal 创建日志。
+func (j *JournalHandler) CreateJournal(ctx context.Context, in *CreateJournalInput) (*dto.HumaOut[*dto.Journal], error) {
+	journalParam := in.Body
 	if journalParam.Content == "" {
 		journalParam.Content = journalParam.SourceContent
 	}
 	journal, err := j.JournalService.Create(ctx, &journalParam)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Journal](err)
 	}
-	return j.JournalService.ConvertToDTO(journal), nil
+	return dto.HumaOK(j.JournalService.ConvertToDTO(journal))
 }
 
-func (j *JournalHandler) UpdateJournal(ctx *gin.Context) (interface{}, error) {
-	var journalParam param.Journal
-	err := ctx.ShouldBindJSON(&journalParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
-
-	journalID, err := util.ParamInt32(ctx, "journalID")
-	if err != nil {
-		return nil, err
-	}
-	return j.JournalService.Update(ctx, journalID, &journalParam)
+// UpdateJournalInput 更新日志输入。
+type UpdateJournalInput struct {
+	JournalID int32         `path:"journalID" doc:"日志ID"`
+	Body      param.Journal `doc:"日志内容"`
 }
 
-func (j *JournalHandler) DeleteJournal(ctx *gin.Context) (interface{}, error) {
-	journalID, err := util.ParamInt32(ctx, "journalID")
+// UpdateJournal 更新日志。
+func (j *JournalHandler) UpdateJournal(ctx context.Context, in *UpdateJournalInput) (*dto.HumaOut[*entity.Journal], error) {
+	journalParam := in.Body
+	journal, err := j.JournalService.Update(ctx, in.JournalID, &journalParam)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*entity.Journal](err)
 	}
-	return nil, j.JournalService.Delete(ctx, journalID)
+	return dto.HumaOK(journal)
+}
+
+// DeleteJournalInput 删除日志输入。
+type DeleteJournalInput struct {
+	JournalID int32 `path:"journalID" doc:"日志ID"`
+}
+
+// DeleteJournal 删除日志。
+func (j *JournalHandler) DeleteJournal(ctx context.Context, in *DeleteJournalInput) (*dto.HumaOut[any], error) {
+	err := j.JournalService.Delete(ctx, in.JournalID)
+	if err != nil {
+		return dto.HumaErr[any](err)
+	}
+	return dto.HumaOK[any](nil)
 }

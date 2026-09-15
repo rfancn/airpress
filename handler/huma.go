@@ -8,7 +8,22 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+
+	"github.com/rfancn/airpress/consts"
 )
+
+// adminAuthUserMiddleware 是 admin huma API 的全局中间件。
+// gin 鉴权中间件通过 ctx.Set 把用户存入 gin Keys，而 huma handler 的
+// context.Context 取不到；此中间件用 Unwrap 取回 gin.Context，再把用户
+// 注入 huma context，使服务层 impl.MustGetAuthorizedUser(ctx) 可用。
+func (s *Server) adminAuthUserMiddleware(ctx huma.Context, next func(huma.Context)) {
+	if ginCtx := humagin.Unwrap(ctx); ginCtx != nil {
+		if user, exists := ginCtx.Get(consts.AuthorizedUser); exists {
+			ctx = huma.WithValue(ctx, consts.AuthorizedUser, user)
+		}
+	}
+	next(ctx)
+}
 
 // schemaNamer 在 huma 默认命名基础上加包名前缀，避免跨包同名类型冲突。
 // 项目里 param/dto/vo/entity 包存在大量同名类型（如 Comment、Post），

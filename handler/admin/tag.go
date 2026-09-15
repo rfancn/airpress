@@ -1,16 +1,11 @@
 package admin
 
 import (
-	"errors"
+	"context"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/trans"
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type TagHandler struct {
@@ -25,80 +20,101 @@ func NewTagHandler(postTagService service.PostTagService, tagService service.Tag
 	}
 }
 
-func (t *TagHandler) ListTags(ctx *gin.Context) (interface{}, error) {
-	sort := param.Sort{}
-	err := ctx.ShouldBindQuery(&sort)
-	if err != nil {
-		return nil, xerr.WithMsg(err, "sort parameter error").WithStatus(xerr.StatusBadRequest)
-	}
+// ListTagsInput 标签列表查询输入。
+type ListTagsInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
+	More bool     `query:"more" doc:"是否返回带文章数的标签"`
+}
+
+// ListTags 获取标签列表。
+func (t *TagHandler) ListTags(ctx context.Context, in *ListTagsInput) (*dto.HumaOut[interface{}], error) {
+	sort := &param.Sort{Fields: in.Sort}
 	if len(sort.Fields) == 0 {
-		sort.Fields = append(sort.Fields, "createTime,desc")
+		sort.Fields = []string{"createTime,desc"}
 	}
-	more, _ := util.MustGetQueryBool(ctx, "more")
-	if more {
-		return t.PostTagService.ListAllTagWithPostCount(ctx, &sort)
-	}
-	tags, err := t.TagService.ListAll(ctx, &sort)
-	if err != nil {
-		return nil, err
-	}
-	return t.TagService.ConvertToDTOs(ctx, tags)
-}
-
-func (t *TagHandler) GetTagByID(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
-	if err != nil {
-		return nil, err
-	}
-	tag, err := t.TagService.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return t.TagService.ConvertToDTO(ctx, tag)
-}
-
-func (t *TagHandler) CreateTag(ctx *gin.Context) (interface{}, error) {
-	tagParam := &param.Tag{}
-	err := ctx.ShouldBindJSON(tagParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
+	if in.More {
+		data, err := t.PostTagService.ListAllTagWithPostCount(ctx, sort)
+		if err != nil {
+			return dto.HumaErr[interface{}](err)
 		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
+		return dto.HumaOK[interface{}](data)
 	}
-	tag, err := t.TagService.Create(ctx, tagParam)
+	tags, err := t.TagService.ListAll(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[interface{}](err)
 	}
-	return t.TagService.ConvertToDTO(ctx, tag)
+	data, err := t.TagService.ConvertToDTOs(ctx, tags)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](data)
 }
 
-func (t *TagHandler) UpdateTag(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
-	if err != nil {
-		return nil, err
-	}
-	tagParam := &param.Tag{}
-	err = ctx.ShouldBindJSON(tagParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
-	tag, err := t.TagService.Update(ctx, id, tagParam)
-	if err != nil {
-		return nil, err
-	}
-	return t.TagService.ConvertToDTO(ctx, tag)
+// GetTagByIDInput 标签详情查询输入。
+type GetTagByIDInput struct {
+	ID int32 `path:"id" doc:"标签ID"`
 }
 
-func (t *TagHandler) DeleteTag(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "id")
+// GetTagByID 获取标签详情。
+func (t *TagHandler) GetTagByID(ctx context.Context, in *GetTagByIDInput) (*dto.HumaOut[*dto.Tag], error) {
+	tag, err := t.TagService.GetByID(ctx, in.ID)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Tag](err)
 	}
-	return nil, t.TagService.Delete(ctx, id)
+	data, err := t.TagService.ConvertToDTO(ctx, tag)
+	if err != nil {
+		return dto.HumaErr[*dto.Tag](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// CreateTagInput 创建标签输入。
+type CreateTagInput struct {
+	Body param.Tag `doc:"标签参数"`
+}
+
+// CreateTag 创建标签。
+func (t *TagHandler) CreateTag(ctx context.Context, in *CreateTagInput) (*dto.HumaOut[*dto.Tag], error) {
+	tag, err := t.TagService.Create(ctx, &in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.Tag](err)
+	}
+	data, err := t.TagService.ConvertToDTO(ctx, tag)
+	if err != nil {
+		return dto.HumaErr[*dto.Tag](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// UpdateTagInput 更新标签输入。
+type UpdateTagInput struct {
+	ID   int32     `path:"id" doc:"标签ID"`
+	Body param.Tag `doc:"标签参数"`
+}
+
+// UpdateTag 更新标签。
+func (t *TagHandler) UpdateTag(ctx context.Context, in *UpdateTagInput) (*dto.HumaOut[*dto.Tag], error) {
+	tag, err := t.TagService.Update(ctx, in.ID, &in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.Tag](err)
+	}
+	data, err := t.TagService.ConvertToDTO(ctx, tag)
+	if err != nil {
+		return dto.HumaErr[*dto.Tag](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// DeleteTagInput 删除标签输入。
+type DeleteTagInput struct {
+	ID int32 `path:"id" doc:"标签ID"`
+}
+
+// DeleteTag 删除标签。
+func (t *TagHandler) DeleteTag(ctx context.Context, in *DeleteTagInput) (*dto.HumaOut[interface{}], error) {
+	err := t.TagService.Delete(ctx, in.ID)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
 }

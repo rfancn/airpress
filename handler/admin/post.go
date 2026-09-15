@@ -2,17 +2,13 @@ package admin
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 
 	"github.com/rfancn/airpress/consts"
-	"github.com/rfancn/airpress/handler/binding"
-	"github.com/rfancn/airpress/handler/trans"
 	"github.com/rfancn/airpress/model/dto"
+	"github.com/rfancn/airpress/model/entity"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/model/vo"
 	"github.com/rfancn/airpress/service"
@@ -33,37 +29,70 @@ func NewPostHandler(postService service.PostService, postAssembler assembler.Pos
 	}
 }
 
-func (p *PostHandler) ListPosts(ctx *gin.Context) (interface{}, error) {
-	postQuery := param.PostQuery{}
-	err := ctx.ShouldBindWith(&postQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+// ListPostsInput 文章列表查询输入。
+type ListPostsInput struct {
+	Page       int      `query:"page" doc:"页码"`
+	Size       int      `query:"size" doc:"每页数量"`
+	Sort       []string `query:"sort" doc:"排序字段"`
+	Keyword    string   `query:"keyword" doc:"关键字"`
+	CategoryID int32    `query:"categoryId" doc:"分类ID"`
+	// 原 gin 逻辑为 More==nil 时视为 true，改用 default:"true" 保持语义不变
+	More  bool  `query:"more" default:"true" doc:"是否返回详情列表"`
+	TagID int32 `query:"tagId" doc:"标签ID"`
+}
+
+// ListPosts 获取文章列表（分页）。
+func (p *PostHandler) ListPosts(ctx context.Context, in *ListPostsInput) (*dto.HumaOut[*dto.Page], error) {
+	postQuery := param.PostQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: in.Size},
 	}
-	if postQuery.Sort == nil {
+	if len(in.Sort) > 0 {
+		postQuery.Sort = &param.Sort{Fields: in.Sort}
+	} else {
 		postQuery.Sort = &param.Sort{Fields: []string{"topPriority,desc", "createTime,desc"}}
 	}
+	// huma 不支持指针 query 参数，空串/0 视为未提供
+	if in.Keyword != "" {
+		postQuery.Keyword = &in.Keyword
+	}
+	if in.CategoryID != 0 {
+		postQuery.CategoryID = &in.CategoryID
+	}
+	if in.TagID != 0 {
+		postQuery.TagID = &in.TagID
+	}
+
 	posts, totalCount, err := p.PostService.Page(ctx, postQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	if postQuery.More == nil || *postQuery.More {
+	if in.More {
 		postVOs, err := p.PostAssembler.ConvertToListVO(ctx, posts)
-		return dto.NewPage(postVOs, totalCount, postQuery.Page), err
+		if err != nil {
+			return dto.HumaErr[*dto.Page](err)
+		}
+		return dto.HumaOK(dto.NewPage(postVOs, totalCount, postQuery.Page))
 	}
 	postDTOs := make([]*dto.Post, 0)
 	for _, post := range posts {
 		postDTO, err := p.PostAssembler.ConvertToSimpleDTO(ctx, post)
 		if err != nil {
-			return nil, err
+			return dto.HumaErr[*dto.Page](err)
 		}
 		postDTOs = append(postDTOs, postDTO)
 	}
-	return dto.NewPage(postDTOs, totalCount, postQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(postDTOs, totalCount, postQuery.Page))
 }
 
-func (p *PostHandler) ListLatestPosts(ctx *gin.Context) (interface{}, error) {
-	top, err := util.MustGetQueryInt32(ctx, "top")
-	if err != nil {
+// ListLatestPostsInput 最新文章查询输入。
+type ListLatestPostsInput struct {
+	Top int32 `query:"top" doc:"返回数量"`
+}
+
+// ListLatestPosts 获取最新文章列表。
+func (p *PostHandler) ListLatestPosts(ctx context.Context, in *ListLatestPostsInput) (*dto.HumaOut[[]*dto.PostMinimal], error) {
+	top := in.Top
+	if top == 0 {
 		top = 10
 	}
 	postQuery := param.PostQuery{
@@ -80,60 +109,74 @@ func (p *PostHandler) ListLatestPosts(ctx *gin.Context) (interface{}, error) {
 	}
 	posts, _, err := p.PostService.Page(ctx, postQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*dto.PostMinimal](err)
 	}
 	postMinimals := make([]*dto.PostMinimal, 0, len(posts))
-
 	for _, post := range posts {
 		postMinimal, err := p.PostAssembler.ConvertToMinimalDTO(ctx, post)
 		if err != nil {
-			return nil, err
+			return dto.HumaErr[[]*dto.PostMinimal](err)
 		}
 		postMinimals = append(postMinimals, postMinimal)
 	}
-	return postMinimals, nil
+	return dto.HumaOK(postMinimals)
 }
 
-func (p *PostHandler) ListPostsByStatus(ctx *gin.Context) (interface{}, error) {
-	var postQuery param.PostQuery
-	err := ctx.ShouldBindWith(&postQuery, binding.CustomFormBinding)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+// ListPostsByStatusInput 按状态查询文章列表输入。
+type ListPostsByStatusInput struct {
+	Status     int32    `path:"status" doc:"文章状态"`
+	Page       int      `query:"page" doc:"页码"`
+	Size       int      `query:"size" doc:"每页数量"`
+	Sort       []string `query:"sort" doc:"排序字段"`
+	Keyword    string   `query:"keyword" doc:"关键字"`
+	CategoryID int32    `query:"categoryId" doc:"分类ID"`
+	More       bool     `query:"more" doc:"是否返回详情列表"`
+	TagID      int32    `query:"tagId" doc:"标签ID"`
+}
+
+// ListPostsByStatus 按状态获取文章列表（分页）。
+func (p *PostHandler) ListPostsByStatus(ctx context.Context, in *ListPostsByStatusInput) (*dto.HumaOut[*dto.Page], error) {
+	postQuery := param.PostQuery{
+		Page: param.Page{PageNum: in.Page, PageSize: in.Size},
 	}
-	if postQuery.Sort == nil {
+	if len(in.Sort) > 0 {
+		postQuery.Sort = &param.Sort{Fields: in.Sort}
+	} else {
 		postQuery.Sort = &param.Sort{Fields: []string{"createTime,desc"}}
 	}
-
-	status, err := util.ParamInt32(ctx, "status")
-	if err != nil {
-		return nil, err
+	if in.Keyword != "" {
+		postQuery.Keyword = &in.Keyword
 	}
-	postQuery.Statuses = make([]*consts.PostStatus, 0)
-	statusType := consts.PostStatus(status)
-	postQuery.Statuses = append(postQuery.Statuses, &statusType)
+	if in.CategoryID != 0 {
+		postQuery.CategoryID = &in.CategoryID
+	}
+	if in.TagID != 0 {
+		postQuery.TagID = &in.TagID
+	}
+
+	statusType := consts.PostStatus(in.Status)
+	postQuery.Statuses = []*consts.PostStatus{&statusType}
 
 	posts, totalCount, err := p.PostService.Page(ctx, postQuery)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.Page](err)
 	}
-	if postQuery.More == nil {
-		*postQuery.More = false
-	}
-	if postQuery.More == nil {
+	if in.More {
 		postVOs, err := p.PostAssembler.ConvertToListVO(ctx, posts)
-		return dto.NewPage(postVOs, totalCount, postQuery.Page), err
+		if err != nil {
+			return dto.HumaErr[*dto.Page](err)
+		}
+		return dto.HumaOK(dto.NewPage(postVOs, totalCount, postQuery.Page))
 	}
-
 	postDTOs := make([]*dto.Post, 0)
 	for _, post := range posts {
 		postDTO, err := p.PostAssembler.ConvertToSimpleDTO(ctx, post)
 		if err != nil {
-			return nil, err
+			return dto.HumaErr[*dto.Page](err)
 		}
 		postDTOs = append(postDTOs, postDTO)
 	}
-
-	return dto.NewPage(postDTOs, totalCount, postQuery.Page), nil
+	return dto.HumaOK(dto.NewPage(postDTOs, totalCount, postQuery.Page))
 }
 
 // GetByPostIDInput 文章详情查询输入。
@@ -154,127 +197,135 @@ func (p *PostHandler) GetByPostID(ctx context.Context, in *GetByPostIDInput) (*d
 	return dto.HumaOK(postDetailVO)
 }
 
-func (p *PostHandler) CreatePost(ctx *gin.Context) (interface{}, error) {
-	var postParam param.Post
-	err := ctx.ShouldBindJSON(&postParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
+// CreatePostInput 创建文章输入。
+type CreatePostInput struct {
+	Body param.Post `doc:"文章参数"`
+}
 
+// CreatePost 创建文章。
+func (p *PostHandler) CreatePost(ctx context.Context, in *CreatePostInput) (*dto.HumaOut[*vo.PostDetailVO], error) {
+	postParam := in.Body
 	post, err := p.PostService.Create(ctx, &postParam)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*vo.PostDetailVO](err)
 	}
-	return p.PostAssembler.ConvertToDetailVO(ctx, post)
+	postDetailVO, err := p.PostAssembler.ConvertToDetailVO(ctx, post)
+	if err != nil {
+		return dto.HumaErr[*vo.PostDetailVO](err)
+	}
+	return dto.HumaOK(postDetailVO)
 }
 
-func (p *PostHandler) UpdatePost(ctx *gin.Context) (interface{}, error) {
-	var postParam param.Post
-	err := ctx.ShouldBindJSON(&postParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
-	}
-
-	postIDStr := ctx.Param("postID")
-	postID, err := strconv.ParseInt(postIDStr, 10, 32)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-
-	postDetailVO, err := p.PostService.Update(ctx, int32(postID), &postParam)
-	if err != nil {
-		return nil, err
-	}
-	return postDetailVO, nil
+// UpdatePostInput 更新文章输入。
+type UpdatePostInput struct {
+	PostID int32      `path:"postID" doc:"文章ID"`
+	Body   param.Post `doc:"文章参数"`
 }
 
-func (p *PostHandler) UpdatePostStatus(ctx *gin.Context) (interface{}, error) {
-	postIDStr := ctx.Param("postID")
-	postID, err := strconv.ParseInt(postIDStr, 10, 32)
+// UpdatePost 更新文章。
+func (p *PostHandler) UpdatePost(ctx context.Context, in *UpdatePostInput) (*dto.HumaOut[*entity.Post], error) {
+	postParam := in.Body
+	post, err := p.PostService.Update(ctx, in.PostID, &postParam)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+		return dto.HumaErr[*entity.Post](err)
 	}
-	statusStr, err := util.ParamString(ctx, "status")
+	return dto.HumaOK(post)
+}
+
+// UpdatePostStatusInput 更新文章状态输入。
+type UpdatePostStatusInput struct {
+	PostID int32  `path:"postID" doc:"文章ID"`
+	Status string `path:"status" doc:"文章状态（PUBLISHED/DRAFT/RECYCLE/INTIMATE）"`
+}
+
+// UpdatePostStatus 更新文章状态。
+func (p *PostHandler) UpdatePostStatus(ctx context.Context, in *UpdatePostStatusInput) (*dto.HumaOut[*dto.PostMinimal], error) {
+	status, err := consts.PostStatusFromString(in.Status)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
-	}
-	status, err := consts.PostStatusFromString(statusStr)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+		return dto.HumaErr[*dto.PostMinimal](xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error"))
 	}
 	if int32(status) < int32(consts.PostStatusPublished) || int32(status) > int32(consts.PostStatusIntimate) {
-		return nil, xerr.WithStatus(nil, xerr.StatusBadRequest).WithMsg("status error")
+		return dto.HumaErr[*dto.PostMinimal](xerr.WithStatus(nil, xerr.StatusBadRequest).WithMsg("status error"))
 	}
-	post, err := p.PostService.UpdateStatus(ctx, int32(postID), status)
+	post, err := p.PostService.UpdateStatus(ctx, in.PostID, status)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.PostMinimal](err)
 	}
-	return p.PostAssembler.ConvertToMinimalDTO(ctx, post)
+	postMinimal, err := p.PostAssembler.ConvertToMinimalDTO(ctx, post)
+	if err != nil {
+		return dto.HumaErr[*dto.PostMinimal](err)
+	}
+	return dto.HumaOK(postMinimal)
 }
 
-func (p *PostHandler) UpdatePostStatusBatch(ctx *gin.Context) (interface{}, error) {
-	statusStr, err := util.ParamString(ctx, "status")
+// UpdatePostStatusBatchInput 批量更新文章状态输入。
+type UpdatePostStatusBatchInput struct {
+	Status string  `path:"status" doc:"文章状态（PUBLISHED/DRAFT/RECYCLE/INTIMATE）"`
+	Body   []int32 `doc:"文章ID列表"`
+}
+
+// UpdatePostStatusBatch 批量更新文章状态。
+func (p *PostHandler) UpdatePostStatusBatch(ctx context.Context, in *UpdatePostStatusBatchInput) (*dto.HumaOut[[]*entity.Post], error) {
+	status, err := consts.PostStatusFromString(in.Status)
 	if err != nil {
-		return nil, err
-	}
-	status, err := consts.PostStatusFromString(statusStr)
-	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*entity.Post](err)
 	}
 	if int32(status) < int32(consts.PostStatusPublished) || int32(status) > int32(consts.PostStatusIntimate) {
-		return nil, xerr.WithStatus(nil, xerr.StatusBadRequest).WithMsg("status error")
+		return dto.HumaErr[[]*entity.Post](xerr.WithStatus(nil, xerr.StatusBadRequest).WithMsg("status error"))
 	}
-	ids := make([]int32, 0)
-	err = ctx.ShouldBind(&ids)
+	posts, err := p.PostService.UpdateStatusBatch(ctx, status, in.Body)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("post ids error")
+		return dto.HumaErr[[]*entity.Post](err)
 	}
-
-	return p.PostService.UpdateStatusBatch(ctx, status, ids)
+	return dto.HumaOK(posts)
 }
 
-func (p *PostHandler) UpdatePostDraft(ctx *gin.Context) (interface{}, error) {
-	postID, err := util.ParamInt32(ctx, "postID")
-	if err != nil {
-		return nil, err
-	}
-	var postContentParam param.PostContent
-	err = ctx.ShouldBindJSON(&postContentParam)
-	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("content param error")
-	}
-	post, err := p.PostService.UpdateDraftContent(ctx, postID, postContentParam.Content, postContentParam.OriginalContent)
-	if err != nil {
-		return nil, err
-	}
-	return p.PostAssembler.ConvertToDetailDTO(ctx, post)
+// UpdatePostDraftInput 更新文章草稿内容输入。
+type UpdatePostDraftInput struct {
+	PostID int32             `path:"postID" doc:"文章ID"`
+	Body   param.PostContent `doc:"草稿内容"`
 }
 
-func (p *PostHandler) DeletePost(ctx *gin.Context) (interface{}, error) {
-	postID, err := util.ParamInt32(ctx, "postID")
+// UpdatePostDraft 更新文章草稿内容。
+func (p *PostHandler) UpdatePostDraft(ctx context.Context, in *UpdatePostDraftInput) (*dto.HumaOut[*dto.PostDetail], error) {
+	post, err := p.PostService.UpdateDraftContent(ctx, in.PostID, in.Body.Content, in.Body.OriginalContent)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.PostDetail](err)
 	}
-	return nil, p.PostService.Delete(ctx, postID)
+	postDetailDTO, err := p.PostAssembler.ConvertToDetailDTO(ctx, post)
+	if err != nil {
+		return dto.HumaErr[*dto.PostDetail](err)
+	}
+	return dto.HumaOK(postDetailDTO)
 }
 
-func (p *PostHandler) DeletePostBatch(ctx *gin.Context) (interface{}, error) {
-	postIDs := make([]int32, 0)
-	err := ctx.ShouldBind(&postIDs)
-	if err != nil {
-		return nil, xerr.WithMsg(err, "postIDs error").WithStatus(xerr.StatusBadRequest)
-	}
-	return nil, p.PostService.DeleteBatch(ctx, postIDs)
+// DeletePostInput 删除文章输入。
+type DeletePostInput struct {
+	PostID int32 `path:"postID" doc:"文章ID"`
 }
 
+// DeletePost 删除文章。
+func (p *PostHandler) DeletePost(ctx context.Context, in *DeletePostInput) (*dto.HumaOut[any], error) {
+	if err := p.PostService.Delete(ctx, in.PostID); err != nil {
+		return dto.HumaErr[any](err)
+	}
+	return dto.HumaOK[any](nil)
+}
+
+// DeletePostBatchInput 批量删除文章输入。
+type DeletePostBatchInput struct {
+	Body []int32 `doc:"文章ID列表"`
+}
+
+// DeletePostBatch 批量删除文章。
+func (p *PostHandler) DeletePostBatch(ctx context.Context, in *DeletePostBatchInput) (*dto.HumaOut[any], error) {
+	if err := p.PostService.DeleteBatch(ctx, in.Body); err != nil {
+		return dto.HumaErr[any](err)
+	}
+	return dto.HumaOK[any](nil)
+}
+
+// PreviewPost 预览文章（保持 gin handler，返回 HTML/文件流）。
 func (p *PostHandler) PreviewPost(ctx *gin.Context) {
 	postID, err := util.ParamInt32(ctx, "postID")
 	if err != nil {

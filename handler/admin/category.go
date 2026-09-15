@@ -1,16 +1,12 @@
 package admin
 
 import (
-	"errors"
+	"context"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
-	"github.com/rfancn/airpress/handler/trans"
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
+	"github.com/rfancn/airpress/model/vo"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type CategoryHandler struct {
@@ -23,113 +19,138 @@ func NewCategoryHandler(categoryService service.CategoryService) *CategoryHandle
 	}
 }
 
-func (c *CategoryHandler) GetCategoryByID(ctx *gin.Context) (interface{}, error) {
-	id, err := util.ParamInt32(ctx, "categoryID")
-	if err != nil {
-		return nil, err
-	}
-	category, err := c.CategoryService.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return c.CategoryService.ConvertToCategoryDTO(ctx, category)
+// GetCategoryByIDInput 分类详情查询输入。
+type GetCategoryByIDInput struct {
+	CategoryID int32 `path:"categoryID" doc:"分类ID"`
 }
 
-func (c *CategoryHandler) ListAllCategory(ctx *gin.Context) (interface{}, error) {
-	categoryQuery := struct {
-		*param.Sort
-		More *bool `json:"more" form:"more"`
-	}{}
-
-	err := ctx.ShouldBindQuery(&categoryQuery)
+// GetCategoryByID 获取分类详情。
+func (c *CategoryHandler) GetCategoryByID(ctx context.Context, in *GetCategoryByIDInput) (*dto.HumaOut[*dto.CategoryDTO], error) {
+	category, err := c.CategoryService.GetByID(ctx, in.CategoryID)
 	if err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("Parameter error")
+		return dto.HumaErr[*dto.CategoryDTO](err)
 	}
-	if categoryQuery.Sort == nil || len(categoryQuery.Fields) == 0 {
-		categoryQuery.Sort = &param.Sort{Fields: []string{"priority,asc"}}
-	}
-	if categoryQuery.More != nil && *categoryQuery.More {
-		return c.CategoryService.ListCategoryWithPostCountDTO(ctx, categoryQuery.Sort)
-	}
-	categories, err := c.CategoryService.ListAll(ctx, categoryQuery.Sort)
+	data, err := c.CategoryService.ConvertToCategoryDTO(ctx, category)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.CategoryDTO](err)
 	}
-	return c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
+	return dto.HumaOK(data)
 }
 
-func (c *CategoryHandler) ListAsTree(ctx *gin.Context) (interface{}, error) {
-	var sort param.Sort
-	err := ctx.ShouldBindQuery(&sort)
-	if err != nil {
-		return nil, err
-	}
+// ListAllCategoryInput 分类列表查询输入。
+type ListAllCategoryInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
+	More bool     `query:"more" doc:"是否返回带文章数的分类"`
+}
+
+// ListAllCategory 获取分类列表。
+func (c *CategoryHandler) ListAllCategory(ctx context.Context, in *ListAllCategoryInput) (*dto.HumaOut[interface{}], error) {
+	sort := &param.Sort{Fields: in.Sort}
 	if len(sort.Fields) == 0 {
-		sort.Fields = append(sort.Fields, "priority,asc")
+		sort.Fields = []string{"priority,asc"}
 	}
-	return c.CategoryService.ListAsTree(ctx, &sort, false)
-}
-
-func (c *CategoryHandler) CreateCategory(ctx *gin.Context) (interface{}, error) {
-	var categoryParam param.Category
-	err := ctx.ShouldBindJSON(&categoryParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
+	if in.More {
+		data, err := c.CategoryService.ListCategoryWithPostCountDTO(ctx, sort)
+		if err != nil {
+			return dto.HumaErr[interface{}](err)
 		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest)
+		return dto.HumaOK[interface{}](data)
 	}
-	category, err := c.CategoryService.Create(ctx, &categoryParam)
+	categories, err := c.CategoryService.ListAll(ctx, sort)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[interface{}](err)
 	}
-	return c.CategoryService.ConvertToCategoryDTO(ctx, category)
+	data, err := c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](data)
 }
 
-func (c *CategoryHandler) UpdateCategory(ctx *gin.Context) (interface{}, error) {
-	var categoryParam param.Category
-	err := ctx.ShouldBindJSON(&categoryParam)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest)
-	}
-	categoryID, err := util.ParamInt32(ctx, "categoryID")
-	if err != nil {
-		return nil, err
-	}
-	categoryParam.ID = categoryID
-	category, err := c.CategoryService.Update(ctx, &categoryParam)
-	if err != nil {
-		return nil, err
-	}
-	return c.CategoryService.ConvertToCategoryDTO(ctx, category)
+// ListAsTreeInput 分类树查询输入。
+type ListAsTreeInput struct {
+	Sort []string `query:"sort" doc:"排序字段"`
 }
 
-func (c *CategoryHandler) UpdateCategoryBatch(ctx *gin.Context) (interface{}, error) {
-	categoryParams := make([]*param.Category, 0)
-	err := ctx.ShouldBindJSON(&categoryParams)
-	if err != nil {
-		e := validator.ValidationErrors{}
-		if errors.As(err, &e) {
-			return nil, xerr.WithStatus(e, xerr.StatusBadRequest).WithMsg(trans.Translate(e))
-		}
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("parameter error")
+// ListAsTree 获取分类树。
+func (c *CategoryHandler) ListAsTree(ctx context.Context, in *ListAsTreeInput) (*dto.HumaOut[[]*vo.CategoryVO], error) {
+	sort := &param.Sort{Fields: in.Sort}
+	if len(sort.Fields) == 0 {
+		sort.Fields = []string{"priority,asc"}
 	}
-	categories, err := c.CategoryService.UpdateBatch(ctx, categoryParams)
+	data, err := c.CategoryService.ListAsTree(ctx, sort, false)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[[]*vo.CategoryVO](err)
 	}
-	return c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
+	return dto.HumaOK(data)
 }
 
-func (c *CategoryHandler) DeleteCategory(ctx *gin.Context) (interface{}, error) {
-	categoryID, err := util.ParamInt32(ctx, "categoryID")
+// CreateCategoryInput 创建分类输入。
+type CreateCategoryInput struct {
+	Body param.Category `doc:"分类参数"`
+}
+
+// CreateCategory 创建分类。
+func (c *CategoryHandler) CreateCategory(ctx context.Context, in *CreateCategoryInput) (*dto.HumaOut[*dto.CategoryDTO], error) {
+	category, err := c.CategoryService.Create(ctx, &in.Body)
 	if err != nil {
-		return nil, err
+		return dto.HumaErr[*dto.CategoryDTO](err)
 	}
-	return nil, c.CategoryService.Delete(ctx, categoryID)
+	data, err := c.CategoryService.ConvertToCategoryDTO(ctx, category)
+	if err != nil {
+		return dto.HumaErr[*dto.CategoryDTO](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// UpdateCategoryInput 更新分类输入。
+type UpdateCategoryInput struct {
+	CategoryID int32          `path:"categoryID" doc:"分类ID"`
+	Body       param.Category `doc:"分类参数"`
+}
+
+// UpdateCategory 更新分类。
+func (c *CategoryHandler) UpdateCategory(ctx context.Context, in *UpdateCategoryInput) (*dto.HumaOut[*dto.CategoryDTO], error) {
+	in.Body.ID = in.CategoryID
+	category, err := c.CategoryService.Update(ctx, &in.Body)
+	if err != nil {
+		return dto.HumaErr[*dto.CategoryDTO](err)
+	}
+	data, err := c.CategoryService.ConvertToCategoryDTO(ctx, category)
+	if err != nil {
+		return dto.HumaErr[*dto.CategoryDTO](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// UpdateCategoryBatchInput 批量更新分类输入。
+type UpdateCategoryBatchInput struct {
+	Body []*param.Category `doc:"批量分类参数"`
+}
+
+// UpdateCategoryBatch 批量更新分类。
+func (c *CategoryHandler) UpdateCategoryBatch(ctx context.Context, in *UpdateCategoryBatchInput) (*dto.HumaOut[[]*dto.CategoryDTO], error) {
+	categories, err := c.CategoryService.UpdateBatch(ctx, in.Body)
+	if err != nil {
+		return dto.HumaErr[[]*dto.CategoryDTO](err)
+	}
+	data, err := c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
+	if err != nil {
+		return dto.HumaErr[[]*dto.CategoryDTO](err)
+	}
+	return dto.HumaOK(data)
+}
+
+// DeleteCategoryInput 删除分类输入。
+type DeleteCategoryInput struct {
+	CategoryID int32 `path:"categoryID" doc:"分类ID"`
+}
+
+// DeleteCategory 删除分类。
+func (c *CategoryHandler) DeleteCategory(ctx context.Context, in *DeleteCategoryInput) (*dto.HumaOut[interface{}], error) {
+	err := c.CategoryService.Delete(ctx, in.CategoryID)
+	if err != nil {
+		return dto.HumaErr[interface{}](err)
+	}
+	return dto.HumaOK[interface{}](nil)
 }

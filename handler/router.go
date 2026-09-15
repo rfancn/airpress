@@ -61,6 +61,8 @@ func (s *Server) RegisterRouters() {
 				authRouter.Use(s.AuthMiddleware.GetWrapHandler())
 				// huma 挂在 authRouter 上，鉴权中间件自动生效
 				adminHumaAPI, adminPrefix := newHumaAPI(s.Router, authRouter, "AirPress Admin API")
+				// 全局中间件：把 gin 鉴权中间件注入的用户复制到 huma context
+				adminHumaAPI.UseMiddleware(s.adminAuthUserMiddleware)
 				humaAPIs = append(humaAPIs, adminHumaAPI)
 				humaPrefixes = append(humaPrefixes, adminPrefix)
 				s.registerAdminBase(authRouter, adminHumaAPI)

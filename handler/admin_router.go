@@ -54,69 +54,61 @@ func (s *Server) registerAdminBackup(rg *gin.RouterGroup, api huma.API) {
 
 // registerAdminCategory 注册 /categories 相关路由。
 func (s *Server) registerAdminCategory(rg *gin.RouterGroup, api huma.API) {
-	categoryRouter := rg.Group("/categories")
-	categoryRouter.PUT("/batch", s.wrapHandler(s.CategoryHandler.UpdateCategoryBatch))
-	categoryRouter.GET("/:categoryID", s.wrapHandler(s.CategoryHandler.GetCategoryByID))
-	categoryRouter.GET("", s.wrapHandler(s.CategoryHandler.ListAllCategory))
-	categoryRouter.GET("/tree_view", s.wrapHandler(s.CategoryHandler.ListAsTree))
-	categoryRouter.POST("", s.wrapHandler(s.CategoryHandler.CreateCategory))
-	categoryRouter.PUT("/:categoryID", s.wrapHandler(s.CategoryHandler.UpdateCategory))
-	categoryRouter.DELETE("/:categoryID", s.wrapHandler(s.CategoryHandler.DeleteCategory))
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/categories/batch", Summary: "批量更新分类", Tags: []string{"admin/categories"}}, s.CategoryHandler.UpdateCategoryBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/categories/{categoryID}", Summary: "获取分类详情", Tags: []string{"admin/categories"}}, s.CategoryHandler.GetCategoryByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/categories", Summary: "获取分类列表", Tags: []string{"admin/categories"}}, s.CategoryHandler.ListAllCategory)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/categories/tree_view", Summary: "获取分类树", Tags: []string{"admin/categories"}}, s.CategoryHandler.ListAsTree)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/categories", Summary: "创建分类", Tags: []string{"admin/categories"}}, s.CategoryHandler.CreateCategory)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/categories/{categoryID}", Summary: "更新分类", Tags: []string{"admin/categories"}}, s.CategoryHandler.UpdateCategory)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/categories/{categoryID}", Summary: "删除分类", Tags: []string{"admin/categories"}}, s.CategoryHandler.DeleteCategory)
 }
 
 // registerAdminPost 注册 /posts 及其 /comments 子路由。
 func (s *Server) registerAdminPost(rg *gin.RouterGroup, api huma.API) {
 	postRouter := rg.Group("/posts")
-	postRouter.GET("", s.wrapHandler(s.PostHandler.ListPosts))
-	postRouter.GET("/latest", s.wrapHandler(s.PostHandler.ListLatestPosts))
-	postRouter.GET("/status/:status", s.wrapHandler(s.PostHandler.ListPostsByStatus))
-	// 已迁移到 huma：huma.Register(api, ... "/posts/{postID}")
-	// postRouter.GET("/:postID", s.wrapHandler(s.PostHandler.GetByPostID))
-	huma.Register(api, huma.Operation{
-		Method:  http.MethodGet,
-		Path:    "/posts/{postID}",
-		Summary: "获取文章详情",
-		Tags:    []string{"admin/posts"},
-	}, s.PostHandler.GetByPostID)
-	postRouter.POST("", s.wrapHandler(s.PostHandler.CreatePost))
-	postRouter.PUT("/:postID", s.wrapHandler(s.PostHandler.UpdatePost))
-	postRouter.PUT("/:postID/status/:status", s.wrapHandler(s.PostHandler.UpdatePostStatus))
-	postRouter.PUT("/status/:status", s.wrapHandler(s.PostHandler.UpdatePostStatusBatch))
-	postRouter.PUT("/:postID/status/draft/content", s.wrapHandler(s.PostHandler.UpdatePostDraft))
-	postRouter.DELETE("/:postID", s.wrapHandler(s.PostHandler.DeletePost))
-	postRouter.DELETE("", s.wrapHandler(s.PostHandler.DeletePostBatch))
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts", Summary: "获取文章列表", Tags: []string{"admin/posts"}}, s.PostHandler.ListPosts)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/latest", Summary: "获取最新文章列表", Tags: []string{"admin/posts"}}, s.PostHandler.ListLatestPosts)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/status/{status}", Summary: "按状态获取文章列表", Tags: []string{"admin/posts"}}, s.PostHandler.ListPostsByStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/{postID}", Summary: "获取文章详情", Tags: []string{"admin/posts"}}, s.PostHandler.GetByPostID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/posts", Summary: "创建文章", Tags: []string{"admin/posts"}}, s.PostHandler.CreatePost)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/{postID}", Summary: "更新文章", Tags: []string{"admin/posts"}}, s.PostHandler.UpdatePost)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/{postID}/status/{status}", Summary: "更新文章状态", Tags: []string{"admin/posts"}}, s.PostHandler.UpdatePostStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/status/{status}", Summary: "批量更新文章状态", Tags: []string{"admin/posts"}}, s.PostHandler.UpdatePostStatusBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/{postID}/status/draft/content", Summary: "更新文章草稿内容", Tags: []string{"admin/posts"}}, s.PostHandler.UpdatePostDraft)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/posts/{postID}", Summary: "删除文章", Tags: []string{"admin/posts"}}, s.PostHandler.DeletePost)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/posts", Summary: "批量删除文章", Tags: []string{"admin/posts"}}, s.PostHandler.DeletePostBatch)
+
+	// PreviewPost 返回 HTML/文件流，保持 gin handler
 	postRouter.GET("/:postID/preview", s.PostHandler.PreviewPost)
-	{
-		postCommentRouter := postRouter.Group("/comments")
-		postCommentRouter.GET("", s.wrapHandler(s.PostCommentHandler.ListPostComment))
-		postCommentRouter.GET("/latest", s.wrapHandler(s.PostCommentHandler.ListPostCommentLatest))
-		postCommentRouter.GET("/:postID/tree_view", s.wrapHandler(s.PostCommentHandler.ListPostCommentAsTree))
-		postCommentRouter.GET("/:postID/list_view", s.wrapHandler(s.PostCommentHandler.ListPostCommentWithParent))
-		postCommentRouter.POST("", s.wrapHandler(s.PostCommentHandler.CreatePostComment))
-		postCommentRouter.PUT("/:commentID", s.wrapHandler(s.PostCommentHandler.UpdatePostComment))
-		postCommentRouter.PUT("/:commentID/status/:status", s.wrapHandler(s.PostCommentHandler.UpdatePostCommentStatus))
-		postCommentRouter.PUT("/status/:status", s.wrapHandler(s.PostCommentHandler.UpdatePostCommentStatusBatch))
-		postCommentRouter.DELETE("/:commentID", s.wrapHandler(s.PostCommentHandler.DeletePostComment))
-		postCommentRouter.DELETE("", s.wrapHandler(s.PostCommentHandler.DeletePostCommentBatch))
-	}
+
+	// /posts/comments 子块
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/comments", Summary: "获取文章评论列表", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.ListPostComment)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/comments/latest", Summary: "获取最新文章评论", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.ListPostCommentLatest)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/comments/{postID}/tree_view", Summary: "获取文章评论树形结构", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.ListPostCommentAsTree)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/posts/comments/{postID}/list_view", Summary: "获取文章评论列表（带父评论信息）", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.ListPostCommentWithParent)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/posts/comments", Summary: "创建文章评论", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.CreatePostComment)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/comments/{commentID}", Summary: "更新文章评论", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.UpdatePostComment)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/comments/{commentID}/status/{status}", Summary: "更新文章评论状态", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.UpdatePostCommentStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/posts/comments/status/{status}", Summary: "批量更新文章评论状态", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.UpdatePostCommentStatusBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/posts/comments/{commentID}", Summary: "删除文章评论", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.DeletePostComment)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/posts/comments", Summary: "批量删除文章评论", Tags: []string{"admin/posts/comments"}}, s.PostCommentHandler.DeletePostCommentBatch)
 }
 
 // registerAdminOption 注册 /options 相关路由。
 func (s *Server) registerAdminOption(rg *gin.RouterGroup, api huma.API) {
-	optionRouter := rg.Group("/options")
-	optionRouter.GET("", s.wrapHandler(s.OptionHandler.ListAllOptions))
-	optionRouter.GET("/map_view", s.wrapHandler(s.OptionHandler.ListAllOptionsAsMap))
-	optionRouter.POST("/map_view/keys", s.wrapHandler(s.OptionHandler.ListAllOptionsAsMapWithKey))
-	optionRouter.POST("/saving", s.wrapHandler(s.OptionHandler.SaveOption))
-	optionRouter.POST("/map_view/saving", s.wrapHandler(s.OptionHandler.SaveOptionWithMap))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/options", Summary: "获取全部选项列表", Tags: []string{"admin/options"}}, s.OptionHandler.ListAllOptions)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/options/map_view", Summary: "获取选项地图视图", Tags: []string{"admin/options"}}, s.OptionHandler.ListAllOptionsAsMap)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/options/map_view/keys", Summary: "按key获取选项地图", Tags: []string{"admin/options"}}, s.OptionHandler.ListAllOptionsAsMapWithKey)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/options/saving", Summary: "保存选项", Tags: []string{"admin/options"}}, s.OptionHandler.SaveOption)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/options/map_view/saving", Summary: "以地图形式保存选项", Tags: []string{"admin/options"}}, s.OptionHandler.SaveOptionWithMap)
 }
 
 // registerAdminLog 注册 /logs 相关路由。
 func (s *Server) registerAdminLog(rg *gin.RouterGroup, api huma.API) {
-	logRouter := rg.Group("/logs")
-	logRouter.GET("/latest", s.wrapHandler(s.LogHandler.PageLatestLog))
-	logRouter.GET("", s.wrapHandler(s.LogHandler.PageLog))
-	logRouter.GET("/clear", s.wrapHandler(s.LogHandler.ClearLog))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/logs/latest", Summary: "获取最新日志", Tags: []string{"admin/logs"}}, s.LogHandler.PageLatestLog)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/logs", Summary: "分页查询日志", Tags: []string{"admin/logs"}}, s.LogHandler.PageLog)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/logs/clear", Summary: "清空日志", Tags: []string{"admin/logs"}}, s.LogHandler.ClearLog)
 }
 
 // registerAdminStatistic 注册 /statistics 相关路由。
@@ -129,87 +121,83 @@ func (s *Server) registerAdminStatistic(rg *gin.RouterGroup, api huma.API) {
 // registerAdminSheet 注册 /sheets 及其 /comments 子路由。
 func (s *Server) registerAdminSheet(rg *gin.RouterGroup, api huma.API) {
 	sheetRouter := rg.Group("/sheets")
-	sheetRouter.GET("/:sheetID", s.wrapHandler(s.SheetHandler.GetSheetByID))
-	sheetRouter.GET("", s.wrapHandler(s.SheetHandler.ListSheet))
-	sheetRouter.POST("", s.wrapHandler(s.SheetHandler.CreateSheet))
-	sheetRouter.PUT("/:sheetID", s.wrapHandler(s.SheetHandler.UpdateSheet))
-	sheetRouter.PUT("/:sheetID/:status", s.wrapHandler(s.SheetHandler.UpdateSheetStatus))
-	sheetRouter.PUT("/:sheetID/status/draft/content", s.wrapHandler(s.SheetHandler.UpdateSheetDraft))
-	sheetRouter.DELETE("/:sheetID", s.wrapHandler(s.SheetHandler.DeleteSheet))
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/{sheetID}", Summary: "获取页面详情", Tags: []string{"admin/sheets"}}, s.SheetHandler.GetSheetByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets", Summary: "获取页面列表", Tags: []string{"admin/sheets"}}, s.SheetHandler.ListSheet)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/sheets", Summary: "创建页面", Tags: []string{"admin/sheets"}}, s.SheetHandler.CreateSheet)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/sheets/{sheetID}", Summary: "更新页面", Tags: []string{"admin/sheets"}}, s.SheetHandler.UpdateSheet)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/sheets/{sheetID}/{status}", Summary: "更新页面状态", Tags: []string{"admin/sheets"}}, s.SheetHandler.UpdateSheetStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/sheets/{sheetID}/status/draft/content", Summary: "更新页面草稿内容", Tags: []string{"admin/sheets"}}, s.SheetHandler.UpdateSheetDraft)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/sheets/{sheetID}", Summary: "删除页面", Tags: []string{"admin/sheets"}}, s.SheetHandler.DeleteSheet)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/independent", Summary: "获取独立页面列表", Tags: []string{"admin/sheets"}}, s.SheetHandler.IndependentSheets)
+
+	// PreviewSheet 返回 HTML/文件流，保持 gin handler
 	sheetRouter.GET("/preview/:sheetID", s.SheetHandler.PreviewSheet)
-	sheetRouter.GET("/independent", s.wrapHandler(s.SheetHandler.IndependentSheets))
-	{
-		sheetCommentRouter := sheetRouter.Group("/comments")
-		sheetCommentRouter.GET("", s.wrapHandler(s.SheetCommentHandler.ListSheetComment))
-		sheetCommentRouter.GET("/latest", s.wrapHandler(s.SheetCommentHandler.ListSheetCommentLatest))
-		sheetCommentRouter.GET("/:sheetID/tree_view", s.wrapHandler(s.SheetCommentHandler.ListSheetCommentAsTree))
-		sheetCommentRouter.GET("/:sheetID/list_view", s.wrapHandler(s.SheetCommentHandler.ListSheetCommentWithParent))
-		sheetCommentRouter.POST("/", s.wrapHandler(s.SheetCommentHandler.CreateSheetComment))
-		sheetCommentRouter.PUT("/:commentID/status/:status", s.wrapHandler(s.SheetCommentHandler.UpdateSheetCommentStatus))
-		sheetCommentRouter.PUT("/status/:status", s.wrapHandler(s.SheetCommentHandler.UpdateSheetCommentStatusBatch))
-		sheetCommentRouter.DELETE("/:commentID", s.wrapHandler(s.SheetCommentHandler.DeleteSheetComment))
-		sheetCommentRouter.DELETE("", s.wrapHandler(s.SheetCommentHandler.DeleteSheetCommentBatch))
-	}
+
+	// /sheets/comments 子块
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/comments", Summary: "获取页面评论列表", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.ListSheetComment)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/comments/latest", Summary: "获取最新页面评论", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.ListSheetCommentLatest)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/comments/{sheetID}/tree_view", Summary: "获取页面评论树形结构", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.ListSheetCommentAsTree)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/sheets/comments/{sheetID}/list_view", Summary: "获取页面评论列表（带父评论信息）", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.ListSheetCommentWithParent)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/sheets/comments", Summary: "创建页面评论", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.CreateSheetComment)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/sheets/comments/{commentID}/status/{status}", Summary: "更新页面评论状态", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.UpdateSheetCommentStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/sheets/comments/status/{status}", Summary: "批量更新页面评论状态", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.UpdateSheetCommentStatusBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/sheets/comments/{commentID}", Summary: "删除页面评论", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.DeleteSheetComment)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/sheets/comments", Summary: "批量删除页面评论", Tags: []string{"admin/sheets/comments"}}, s.SheetCommentHandler.DeleteSheetCommentBatch)
 }
 
 // registerAdminJournal 注册 /journals 及其 /comments 子路由。
 func (s *Server) registerAdminJournal(rg *gin.RouterGroup, api huma.API) {
-	journalRouter := rg.Group("/journals")
-	journalRouter.GET("", s.wrapHandler(s.JournalHandler.ListJournal))
-	journalRouter.GET("/latest", s.wrapHandler(s.JournalHandler.ListLatestJournal))
-	journalRouter.POST("", s.wrapHandler(s.JournalHandler.CreateJournal))
-	journalRouter.PUT("/:journalID", s.wrapHandler(s.JournalHandler.UpdateJournal))
-	journalRouter.DELETE("/:journalID", s.wrapHandler(s.JournalHandler.DeleteJournal))
-	{
-		journalCommentRouter := journalRouter.Group("/comments")
-		journalCommentRouter.GET("", s.wrapHandler(s.JournalCommentHandler.ListJournalComment))
-		journalCommentRouter.GET("/latest", s.wrapHandler(s.JournalCommentHandler.ListJournalCommentLatest))
-		journalCommentRouter.GET("/:journalID/tree_view", s.wrapHandler(s.JournalCommentHandler.ListJournalCommentAsTree))
-		journalCommentRouter.GET("/:journalID/list_view", s.wrapHandler(s.JournalCommentHandler.ListJournalCommentWithParent))
-		journalCommentRouter.POST("/", s.wrapHandler(s.JournalCommentHandler.CreateJournalComment))
-		journalCommentRouter.PUT("/:commentID/status/:status", s.wrapHandler(s.JournalCommentHandler.UpdateJournalCommentStatus))
-		journalCommentRouter.PUT("/status/:status", s.wrapHandler(s.JournalCommentHandler.UpdateJournalStatusBatch))
-		journalCommentRouter.PUT("/:commentID", s.wrapHandler(s.JournalCommentHandler.UpdateJournalComment))
-		journalCommentRouter.DELETE("/:commentID", s.wrapHandler(s.JournalCommentHandler.DeleteJournalComment))
-		journalCommentRouter.DELETE("", s.wrapHandler(s.JournalCommentHandler.DeleteJournalCommentBatch))
-	}
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals", Summary: "获取日志分页列表", Tags: []string{"admin/journals"}}, s.JournalHandler.ListJournal)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals/latest", Summary: "获取最新日志列表", Tags: []string{"admin/journals"}}, s.JournalHandler.ListLatestJournal)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/journals", Summary: "创建日志", Tags: []string{"admin/journals"}}, s.JournalHandler.CreateJournal)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/journals/{journalID}", Summary: "更新日志", Tags: []string{"admin/journals"}}, s.JournalHandler.UpdateJournal)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/journals/{journalID}", Summary: "删除日志", Tags: []string{"admin/journals"}}, s.JournalHandler.DeleteJournal)
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals/comments", Summary: "获取日志评论列表", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.ListJournalComment)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals/comments/latest", Summary: "获取最新日志评论", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.ListJournalCommentLatest)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals/comments/{journalID}/tree_view", Summary: "获取日志评论树形列表", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.ListJournalCommentAsTree)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/journals/comments/{journalID}/list_view", Summary: "获取日志评论带父级列表", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.ListJournalCommentWithParent)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/journals/comments", Summary: "创建日志评论", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.CreateJournalComment)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/journals/comments/{commentID}/status/{status}", Summary: "更新日志评论状态", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.UpdateJournalCommentStatus)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/journals/comments/status/{status}", Summary: "批量更新日志评论状态", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.UpdateJournalStatusBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/journals/comments/{commentID}", Summary: "更新日志评论", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.UpdateJournalComment)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/journals/comments/{commentID}", Summary: "删除日志评论", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.DeleteJournalComment)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/journals/comments", Summary: "批量删除日志评论", Tags: []string{"admin/journals"}}, s.JournalCommentHandler.DeleteJournalCommentBatch)
 }
 
 // registerAdminLink 注册 /links 相关路由。
 func (s *Server) registerAdminLink(rg *gin.RouterGroup, api huma.API) {
-	linkRouter := rg.Group("/links")
-	linkRouter.GET("", s.wrapHandler(s.LinkHandler.ListLinks))
-	linkRouter.GET("/:id", s.wrapHandler(s.LinkHandler.GetLinkByID))
-	linkRouter.POST("", s.wrapHandler(s.LinkHandler.CreateLink))
-	linkRouter.PUT("/:id", s.wrapHandler(s.LinkHandler.UpdateLink))
-	linkRouter.DELETE("/:id", s.wrapHandler(s.LinkHandler.DeleteLink))
-	linkRouter.GET("/teams", s.wrapHandler(s.LinkHandler.ListLinkTeams))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/links", Summary: "获取链接列表", Tags: []string{"admin/links"}}, s.LinkHandler.ListLinks)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/links/{id}", Summary: "获取链接详情", Tags: []string{"admin/links"}}, s.LinkHandler.GetLinkByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/links", Summary: "创建链接", Tags: []string{"admin/links"}}, s.LinkHandler.CreateLink)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/links/{id}", Summary: "更新链接", Tags: []string{"admin/links"}}, s.LinkHandler.UpdateLink)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/links/{id}", Summary: "删除链接", Tags: []string{"admin/links"}}, s.LinkHandler.DeleteLink)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/links/teams", Summary: "获取链接团队列表", Tags: []string{"admin/links"}}, s.LinkHandler.ListLinkTeams)
 }
 
 // registerAdminMenu 注册 /menus 相关路由。
 func (s *Server) registerAdminMenu(rg *gin.RouterGroup, api huma.API) {
-	menuRouter := rg.Group("/menus")
-	menuRouter.GET("", s.wrapHandler(s.MenuHandler.ListMenus))
-	menuRouter.GET("/tree_view", s.wrapHandler(s.MenuHandler.ListMenusAsTree))
-	menuRouter.GET("/team/tree_view", s.wrapHandler(s.MenuHandler.ListMenusAsTreeByTeam))
-	menuRouter.GET("/:id", s.wrapHandler(s.MenuHandler.GetMenuByID))
-	menuRouter.POST("", s.wrapHandler(s.MenuHandler.CreateMenu))
-	menuRouter.POST("/batch", s.wrapHandler(s.MenuHandler.CreateMenuBatch))
-	menuRouter.PUT("/:id", s.wrapHandler(s.MenuHandler.UpdateMenu))
-	menuRouter.PUT("/batch", s.wrapHandler(s.MenuHandler.UpdateMenuBatch))
-	menuRouter.DELETE("/:id", s.wrapHandler(s.MenuHandler.DeleteMenu))
-	menuRouter.DELETE("/batch", s.wrapHandler(s.MenuHandler.DeleteMenuBatch))
-	menuRouter.GET("/teams", s.wrapHandler(s.MenuHandler.ListMenuTeams))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/menus", Summary: "获取菜单列表", Tags: []string{"admin/menus"}}, s.MenuHandler.ListMenus)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/menus/tree_view", Summary: "获取菜单树", Tags: []string{"admin/menus"}}, s.MenuHandler.ListMenusAsTree)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/menus/team/tree_view", Summary: "按团队获取菜单树", Tags: []string{"admin/menus"}}, s.MenuHandler.ListMenusAsTreeByTeam)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/menus/{id}", Summary: "获取菜单详情", Tags: []string{"admin/menus"}}, s.MenuHandler.GetMenuByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/menus", Summary: "创建菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.CreateMenu)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/menus/batch", Summary: "批量创建菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.CreateMenuBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/menus/{id}", Summary: "更新菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.UpdateMenu)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/menus/batch", Summary: "批量更新菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.UpdateMenuBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/menus/{id}", Summary: "删除菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.DeleteMenu)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/menus/batch", Summary: "批量删除菜单", Tags: []string{"admin/menus"}}, s.MenuHandler.DeleteMenuBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/menus/teams", Summary: "获取菜单团队列表", Tags: []string{"admin/menus"}}, s.MenuHandler.ListMenuTeams)
 }
 
 // registerAdminTag 注册 /tags 相关路由。
 func (s *Server) registerAdminTag(rg *gin.RouterGroup, api huma.API) {
-	tagRouter := rg.Group("/tags")
-	tagRouter.GET("", s.wrapHandler(s.TagHandler.ListTags))
-	tagRouter.GET("/:id", s.wrapHandler(s.TagHandler.GetTagByID))
-	tagRouter.POST("", s.wrapHandler(s.TagHandler.CreateTag))
-	tagRouter.PUT("/:id", s.wrapHandler(s.TagHandler.UpdateTag))
-	tagRouter.DELETE("/:id", s.wrapHandler(s.TagHandler.DeleteTag))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/tags", Summary: "获取标签列表", Tags: []string{"admin/tags"}}, s.TagHandler.ListTags)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/tags/{id}", Summary: "获取标签详情", Tags: []string{"admin/tags"}}, s.TagHandler.GetTagByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/tags", Summary: "创建标签", Tags: []string{"admin/tags"}}, s.TagHandler.CreateTag)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/tags/{id}", Summary: "更新标签", Tags: []string{"admin/tags"}}, s.TagHandler.UpdateTag)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/tags/{id}", Summary: "删除标签", Tags: []string{"admin/tags"}}, s.TagHandler.DeleteTag)
 }
 
 // registerAdminPhoto 注册 /photos 相关路由。
