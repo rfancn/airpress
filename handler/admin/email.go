@@ -1,11 +1,11 @@
 package admin
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 
+	"github.com/rfancn/airpress/model/dto"
 	"github.com/rfancn/airpress/model/param"
 	"github.com/rfancn/airpress/service"
-	"github.com/rfancn/airpress/util/xerr"
 )
 
 type EmailHandler struct {
@@ -18,10 +18,16 @@ func NewEmailHandler(emailService service.EmailService) *EmailHandler {
 	}
 }
 
-func (e *EmailHandler) Test(ctx *gin.Context) (interface{}, error) {
-	p := &param.TestEmail{}
-	if err := ctx.ShouldBindJSON(p); err != nil {
-		return nil, xerr.WithStatus(err, xerr.StatusBadRequest).WithMsg("param error ")
+// TestEmailInput 发送测试邮件输入。
+type TestEmailInput struct {
+	Body param.TestEmail `doc:"测试邮件参数"`
+}
+
+// Test 发送测试邮件。
+func (e *EmailHandler) Test(ctx context.Context, in *TestEmailInput) (*dto.HumaOut[any], error) {
+	err := e.EmailService.SendTextEmail(ctx, in.Body.To, in.Body.Subject, in.Body.Content)
+	if err != nil {
+		return dto.HumaErr[any](err)
 	}
-	return nil, e.EmailService.SendTextEmail(ctx, p.To, p.Subject, p.Content)
+	return dto.HumaOK[any](nil)
 }

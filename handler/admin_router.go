@@ -114,9 +114,8 @@ func (s *Server) registerAdminLog(rg *gin.RouterGroup, api huma.API) {
 
 // registerAdminStatistic 注册 /statistics 相关路由。
 func (s *Server) registerAdminStatistic(rg *gin.RouterGroup, api huma.API) {
-	statisticRouter := rg.Group("/statistics")
-	statisticRouter.GET("", s.wrapHandler(s.StatisticHandler.Statistics))
-	statisticRouter.GET("user", s.wrapHandler(s.StatisticHandler.StatisticsWithUser))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/statistics", Summary: "获取统计数据", Tags: []string{"admin/statistics"}}, s.StatisticHandler.Statistics)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/statistics/user", Summary: "获取带用户的统计数据", Tags: []string{"admin/statistics"}}, s.StatisticHandler.StatisticsWithUser)
 }
 
 // registerAdminSheet 注册 /sheets 及其 /comments 子路由。
@@ -203,62 +202,62 @@ func (s *Server) registerAdminTag(rg *gin.RouterGroup, api huma.API) {
 
 // registerAdminPhoto 注册 /photos 相关路由。
 func (s *Server) registerAdminPhoto(rg *gin.RouterGroup, api huma.API) {
-	photoRouter := rg.Group("/photos")
-	photoRouter.GET("/latest", s.wrapHandler(s.PhotoHandler.ListPhoto))
-	photoRouter.GET("", s.wrapHandler(s.PhotoHandler.PagePhotos))
-	photoRouter.GET("/:id", s.wrapHandler(s.PhotoHandler.GetPhotoByID))
-	photoRouter.DELETE("/batch", s.wrapHandler(s.PhotoHandler.DeletePhotoBatch))
-	photoRouter.POST("", s.wrapHandler(s.PhotoHandler.CreatePhoto))
-	photoRouter.POST("/batch", s.wrapHandler(s.PhotoHandler.CreatePhotoBatch))
-	photoRouter.PUT("/:id", s.wrapHandler(s.PhotoHandler.UpdatePhoto))
-	photoRouter.GET("/teams", s.wrapHandler(s.PhotoHandler.ListPhotoTeams))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/photos/latest", Summary: "获取照片列表", Tags: []string{"admin/photos"}}, s.PhotoHandler.ListPhoto)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/photos", Summary: "分页获取照片列表", Tags: []string{"admin/photos"}}, s.PhotoHandler.PagePhotos)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/photos/{id}", Summary: "获取照片详情", Tags: []string{"admin/photos"}}, s.PhotoHandler.GetPhotoByID)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/photos/batch", Summary: "批量删除照片", Tags: []string{"admin/photos"}}, s.PhotoHandler.DeletePhotoBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/photos", Summary: "创建照片", Tags: []string{"admin/photos"}}, s.PhotoHandler.CreatePhoto)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/photos/batch", Summary: "批量创建照片", Tags: []string{"admin/photos"}}, s.PhotoHandler.CreatePhotoBatch)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/photos/{id}", Summary: "更新照片", Tags: []string{"admin/photos"}}, s.PhotoHandler.UpdatePhoto)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/photos/teams", Summary: "获取照片团队列表", Tags: []string{"admin/photos"}}, s.PhotoHandler.ListPhotoTeams)
 }
 
 // registerAdminUser 注册 /users 相关路由。
 func (s *Server) registerAdminUser(rg *gin.RouterGroup, api huma.API) {
-	userRouter := rg.Group("/users")
-	userRouter.GET("/profiles", s.wrapHandler(s.UserHandler.GetCurrentUserProfile))
-	userRouter.PUT("/profiles", s.wrapHandler(s.UserHandler.UpdateUserProfile))
-	userRouter.PUT("/profiles/password", s.wrapHandler(s.UserHandler.UpdatePassword))
-	userRouter.PUT("/mfa/generate", s.wrapHandler(s.UserHandler.GenerateMFAQRCode))
-	userRouter.PUT("/mfa/update", s.wrapHandler(s.UserHandler.UpdateMFA))
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/users/profiles", Summary: "获取当前用户资料", Tags: []string{"admin/users"}}, s.UserHandler.GetCurrentUserProfile)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/users/profiles", Summary: "更新用户资料", Tags: []string{"admin/users"}}, s.UserHandler.UpdateUserProfile)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/users/profiles/password", Summary: "更新密码", Tags: []string{"admin/users"}}, s.UserHandler.UpdatePassword)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/users/mfa/generate", Summary: "生成MFA二维码", Tags: []string{"admin/users"}}, s.UserHandler.GenerateMFAQRCode)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/users/mfa/update", Summary: "更新MFA", Tags: []string{"admin/users"}}, s.UserHandler.UpdateMFA)
 }
 
-// registerAdminTheme 注册 themes 相关路由（原 group 路径为 "themes"，无前导斜杠，保持原样）。
+// registerAdminTheme 注册 themes 相关路由。
 func (s *Server) registerAdminTheme(rg *gin.RouterGroup, api huma.API) {
+	// huma JSON API
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation", Summary: "获取已激活主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetActivatedTheme)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}", Summary: "按ID获取主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes", Summary: "获取所有主题列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.ListAllThemes)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/files", Summary: "获取已激活主题文件列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.ListActivatedThemeFile)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/files", Summary: "按ID获取主题文件列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.ListThemeFileByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/files/content", Summary: "获取已激活主题文件内容", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeFileContent)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/files/content", Summary: "按ID获取主题文件内容", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeFileContentByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/themes/files/content", Summary: "更新已激活主题文件内容", Tags: []string{"admin/themes"}}, s.ThemeHandler.UpdateThemeFile)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/themes/{themeID}/files/content", Summary: "按ID更新主题文件内容", Tags: []string{"admin/themes"}}, s.ThemeHandler.UpdateThemeFileByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/template/custom/sheet", Summary: "获取自定义页面模板列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.ListCustomSheetTemplate)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/template/custom/post", Summary: "获取自定义文章模板列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.ListCustomPostTemplate)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/themes/{themeID}/activation", Summary: "激活主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.ActivateTheme)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/configurations", Summary: "获取已激活主题配置", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetActivatedThemeConfig)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/configurations", Summary: "按ID获取主题配置", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeConfigByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/configurations/groups/{group}", Summary: "按分组获取主题配置", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeConfigByGroup)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/configurations/groups", Summary: "获取主题配置分组名称列表", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeConfigGroupNames)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/settings", Summary: "获取已激活主题设置地图", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetActivatedThemeSettingMap)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/settings", Summary: "按ID获取主题设置地图", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeSettingMapByID)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/{themeID}/groups/{group}/settings", Summary: "按分组获取主题设置地图", Tags: []string{"admin/themes"}}, s.ThemeHandler.GetThemeSettingMapByGroupAndThemeID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/themes/activation/settings", Summary: "保存已激活主题设置", Tags: []string{"admin/themes"}}, s.ThemeHandler.SaveActivatedThemeSetting)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/themes/{themeID}/settings", Summary: "按ID保存主题设置", Tags: []string{"admin/themes"}}, s.ThemeHandler.SaveThemeSettingByID)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/themes/{themeID}", Summary: "按ID删除主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.DeleteThemeByID)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/themes/fetching", Summary: "远程拉取主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.FetchTheme)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/themes/fetching/{themeID}", Summary: "远程更新主题（未实现）", Tags: []string{"admin/themes"}}, s.ThemeHandler.UpdateThemeByFetching)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/themes/reload", Summary: "重载主题", Tags: []string{"admin/themes"}}, s.ThemeHandler.ReloadTheme)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/themes/activation/template/exists", Summary: "检查模板是否存在", Tags: []string{"admin/themes"}}, s.ThemeHandler.TemplateExist)
+
+	// gin 文件流路由（上传主题包，保持 gin 不变）
 	themeRouter := rg.Group("themes")
-	themeRouter.GET("/activation", s.wrapHandler(s.ThemeHandler.GetActivatedTheme))
-	themeRouter.GET("/:themeID", s.wrapHandler(s.ThemeHandler.GetThemeByID))
-	themeRouter.GET("", s.wrapHandler(s.ThemeHandler.ListAllThemes))
-	themeRouter.GET("/activation/files", s.wrapHandler(s.ThemeHandler.ListActivatedThemeFile))
-	themeRouter.GET("/:themeID/files", s.wrapHandler(s.ThemeHandler.ListThemeFileByID))
-	themeRouter.GET("files/content", s.wrapHandler(s.ThemeHandler.GetThemeFileContent))
-	themeRouter.GET("/:themeID/files/content", s.wrapHandler(s.ThemeHandler.GetThemeFileContentByID))
-	themeRouter.PUT("/files/content", s.wrapHandler(s.ThemeHandler.UpdateThemeFile))
-	themeRouter.PUT("/:themeID/files/content", s.wrapHandler(s.ThemeHandler.UpdateThemeFileByID))
-	themeRouter.GET("activation/template/custom/sheet", s.wrapHandler(s.ThemeHandler.ListCustomSheetTemplate))
-	themeRouter.GET("activation/template/custom/post", s.wrapHandler(s.ThemeHandler.ListCustomPostTemplate))
-	themeRouter.POST("/:themeID/activation", s.wrapHandler(s.ThemeHandler.ActivateTheme))
-	themeRouter.GET("activation/configurations", s.wrapHandler(s.ThemeHandler.GetActivatedThemeConfig))
-	themeRouter.GET("/:themeID/configurations", s.wrapHandler(s.ThemeHandler.GetThemeConfigByID))
-	themeRouter.GET("/:themeID/configurations/groups/:group", s.wrapHandler(s.ThemeHandler.GetThemeConfigByGroup))
-	themeRouter.GET("/:themeID/configurations/groups", s.wrapHandler(s.ThemeHandler.GetThemeConfigGroupNames))
-	themeRouter.GET("activation/settings", s.wrapHandler(s.ThemeHandler.GetActivatedThemeSettingMap))
-	themeRouter.GET("/:themeID/settings", s.wrapHandler(s.ThemeHandler.GetThemeSettingMapByID))
-	themeRouter.GET("/:themeID/groups/:group/settings", s.wrapHandler(s.ThemeHandler.GetThemeSettingMapByGroupAndThemeID))
-	themeRouter.POST("activation/settings", s.wrapHandler(s.ThemeHandler.SaveActivatedThemeSetting))
-	themeRouter.POST("/:themeID/settings", s.wrapHandler(s.ThemeHandler.SaveThemeSettingByID))
-	themeRouter.DELETE("/:themeID", s.wrapHandler(s.ThemeHandler.DeleteThemeByID))
 	themeRouter.POST("upload", s.wrapHandler(s.ThemeHandler.UploadTheme))
 	themeRouter.PUT("upload/:themeID", s.wrapHandler(s.ThemeHandler.UpdateThemeByUpload))
-	themeRouter.POST("fetching", s.wrapHandler(s.ThemeHandler.FetchTheme))
-	themeRouter.PUT("fetching/:themeID", s.wrapHandler(s.ThemeHandler.UpdateThemeByFetching))
-	themeRouter.POST("reload", s.wrapHandler(s.ThemeHandler.ReloadTheme))
-	themeRouter.GET("activation/template/exists", s.wrapHandler(s.ThemeHandler.TemplateExist))
 }
 
 // registerAdminEmail 注册 /mails 相关路由。
 func (s *Server) registerAdminEmail(rg *gin.RouterGroup, api huma.API) {
-	emailRouter := rg.Group("/mails")
-	emailRouter.POST("/test", s.wrapHandler(s.EmailHandler.Test))
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/mails/test", Summary: "发送测试邮件", Tags: []string{"admin/mails"}}, s.EmailHandler.Test)
 }
