@@ -43,6 +43,22 @@ func NewPostCommentHandler(
 	}
 }
 
+// ListPostComment godoc
+// @Summary      分页查询文章评论列表
+// @Description  支持按关键词、状态过滤,支持排序与分页
+// @Tags         Admin.Comment.Post
+// @Accept       json
+// @Produce      json
+// @Param        page      query     int        false  "页码(从0开始)"  example(0)
+// @Param        size      query     int        false  "每页数量"        example(10)
+// @Param        sort      query     []string   false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Param        keyword   query     string     false  "评论关键词"
+// @Param        status    query     []string   false  "状态过滤"      collectionFormat(multi)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.PostCommentWithPost}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments [get]
 func (p *PostCommentHandler) ListPostComment(ctx *gin.Context) (interface{}, error) {
 	var commentQuery param.CommentQuery
 	err := ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
@@ -63,6 +79,17 @@ func (p *PostCommentHandler) ListPostComment(ctx *gin.Context) (interface{}, err
 	return dto.NewPage(commentDTOs, totalCount, commentQuery.Page), nil
 }
 
+// ListPostCommentLatest godoc
+// @Summary      查询最新文章评论
+// @Description  返回指定数量的最新文章评论列表
+// @Tags         Admin.Comment.Post
+// @Produce      json
+// @Param        top  query     int  false  "返回数量"  example(10)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]vo.PostCommentWithPost}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/latest [get]
 func (p *PostCommentHandler) ListPostCommentLatest(ctx *gin.Context) (interface{}, error) {
 	top, err := util.MustGetQueryInt32(ctx, "top")
 	if err != nil {
@@ -79,6 +106,18 @@ func (p *PostCommentHandler) ListPostCommentLatest(ctx *gin.Context) (interface{
 	return p.PostCommentAssembler.ConvertToWithPost(ctx, comments)
 }
 
+// ListPostCommentAsTree godoc
+// @Summary      树形文章评论列表
+// @Description  根据文章ID返回评论的树形结构,支持分页
+// @Tags         Admin.Comment.Post
+// @Produce      json
+// @Param        postID  path     int  true  "文章ID"  example(1)
+// @Param        page    query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.Comment}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/{postID}/tree_view [get]
 func (p *PostCommentHandler) ListPostCommentAsTree(ctx *gin.Context) (interface{}, error) {
 	postID, err := util.ParamInt32(ctx, "postID")
 	if err != nil {
@@ -104,6 +143,18 @@ func (p *PostCommentHandler) ListPostCommentAsTree(ctx *gin.Context) (interface{
 	return dto.NewPage(commentVOs, totalCount, page), nil
 }
 
+// ListPostCommentWithParent godoc
+// @Summary      带父评论的文章评论列表
+// @Description  根据文章ID返回评论列表(每条带父评论信息),支持分页
+// @Tags         Admin.Comment.Post
+// @Produce      json
+// @Param        postID  path     int  true  "文章ID"  example(1)
+// @Param        page    query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.CommentWithParent}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/{postID}/list_view [get]
 func (p *PostCommentHandler) ListPostCommentWithParent(ctx *gin.Context) (interface{}, error) {
 	postID, err := util.ParamInt32(ctx, "postID")
 	if err != nil {
@@ -137,6 +188,18 @@ func (p *PostCommentHandler) ListPostCommentWithParent(ctx *gin.Context) (interf
 	return dto.NewPage(commentsWithParent, totalCount, page), nil
 }
 
+// CreatePostComment godoc
+// @Summary      创建文章评论
+// @Description  在指定文章下创建一条评论
+// @Tags         Admin.Comment.Post
+// @Accept       json
+// @Produce      json
+// @Param        comment  body     param.AdminComment  true  "评论参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments [post]
 func (p *PostCommentHandler) CreatePostComment(ctx *gin.Context) (interface{}, error) {
 	var commentParam *param.AdminComment
 	err := ctx.ShouldBindJSON(&commentParam)
@@ -172,6 +235,19 @@ func (p *PostCommentHandler) CreatePostComment(ctx *gin.Context) (interface{}, e
 	return p.PostCommentAssembler.ConvertToDTO(ctx, comment)
 }
 
+// UpdatePostComment godoc
+// @Summary      更新文章评论
+// @Description  根据评论ID更新评论内容
+// @Tags         Admin.Comment.Post
+// @Accept       json
+// @Produce      json
+// @Param        commentID  path     int             true  "评论ID"  example(1)
+// @Param        comment    body     param.Comment   true  "评论参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/{commentID} [put]
 func (p *PostCommentHandler) UpdatePostComment(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -200,6 +276,18 @@ func (p *PostCommentHandler) UpdatePostComment(ctx *gin.Context) (interface{}, e
 	return p.PostCommentAssembler.ConvertToDTO(ctx, comment)
 }
 
+// UpdatePostCommentStatus godoc
+// @Summary      更新文章评论状态
+// @Description  根据评论ID和状态更新评论状态
+// @Tags         Admin.Comment.Post
+// @Produce      json
+// @Param        commentID  path     int     true  "评论ID"  example(1)
+// @Param        status     path     string  true  "状态值"  example(published)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/{commentID}/status/{status} [put]
 func (p *PostCommentHandler) UpdatePostCommentStatus(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -216,6 +304,19 @@ func (p *PostCommentHandler) UpdatePostCommentStatus(ctx *gin.Context) (interfac
 	return p.PostCommentService.UpdateStatus(ctx, commentID, status)
 }
 
+// UpdatePostCommentStatusBatch godoc
+// @Summary      批量更新文章评论状态
+// @Description  根据评论ID列表和状态批量更新评论状态
+// @Tags         Admin.Comment.Post
+// @Accept       json
+// @Produce      json
+// @Param        status  path     string  true  "状态值"  example(published)
+// @Param        ids     body     []int   true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/status/{status} [put]
 func (p *PostCommentHandler) UpdatePostCommentStatusBatch(ctx *gin.Context) (interface{}, error) {
 	strStatus, err := util.ParamString(ctx, "status")
 	if err != nil {
@@ -238,6 +339,17 @@ func (p *PostCommentHandler) UpdatePostCommentStatusBatch(ctx *gin.Context) (int
 	return p.PostCommentAssembler.ConvertToDTOList(ctx, comments)
 }
 
+// DeletePostComment godoc
+// @Summary      删除文章评论
+// @Description  根据评论ID删除指定文章评论
+// @Tags         Admin.Comment.Post
+// @Produce      json
+// @Param        commentID  path     int  true  "评论ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments/{commentID} [delete]
 func (p *PostCommentHandler) DeletePostComment(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -246,6 +358,18 @@ func (p *PostCommentHandler) DeletePostComment(ctx *gin.Context) (interface{}, e
 	return nil, p.PostCommentService.Delete(ctx, commentID)
 }
 
+// DeletePostCommentBatch godoc
+// @Summary      批量删除文章评论
+// @Description  根据评论ID列表批量删除文章评论
+// @Tags         Admin.Comment.Post
+// @Accept       json
+// @Produce      json
+// @Param        ids  body     []int  true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/comments [delete]
 func (p *PostCommentHandler) DeletePostCommentBatch(ctx *gin.Context) (interface{}, error) {
 	ids := make([]int32, 0)
 	err := ctx.ShouldBindJSON(&ids)

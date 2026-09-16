@@ -35,6 +35,22 @@ func NewJournalCommentHandler(journalCommentService service.JournalCommentServic
 	}
 }
 
+// ListJournalComment godoc
+// @Summary      分页查询日志评论列表
+// @Description  支持按关键词、状态过滤,支持排序与分页
+// @Tags         Admin.Comment.Journal
+// @Accept       json
+// @Produce      json
+// @Param        page      query     int        false  "页码(从0开始)"  example(0)
+// @Param        size      query     int        false  "每页数量"        example(10)
+// @Param        sort      query     []string   false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Param        keyword   query     string     false  "评论关键词"
+// @Param        status    query     []string   false  "状态过滤"      collectionFormat(multi)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.JournalCommentWithJournal}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments [get]
 func (j *JournalCommentHandler) ListJournalComment(ctx *gin.Context) (interface{}, error) {
 	var commentQuery param.CommentQuery
 	err := ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
@@ -55,6 +71,17 @@ func (j *JournalCommentHandler) ListJournalComment(ctx *gin.Context) (interface{
 	return dto.NewPage(commentDTOs, totalCount, commentQuery.Page), nil
 }
 
+// ListJournalCommentLatest godoc
+// @Summary      查询最新日志评论
+// @Description  返回指定数量的最新日志评论列表
+// @Tags         Admin.Comment.Journal
+// @Produce      json
+// @Param        top  query     int  false  "返回数量"  example(10)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]vo.JournalCommentWithJournal}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/latest [get]
 func (j *JournalCommentHandler) ListJournalCommentLatest(ctx *gin.Context) (interface{}, error) {
 	top, err := util.MustGetQueryInt32(ctx, "top")
 	if err != nil {
@@ -71,6 +98,18 @@ func (j *JournalCommentHandler) ListJournalCommentLatest(ctx *gin.Context) (inte
 	return j.JournalCommentAssembler.ConvertToWithJournal(ctx, comments)
 }
 
+// ListJournalCommentAsTree godoc
+// @Summary      树形日志评论列表
+// @Description  根据日志ID返回评论的树形结构,支持分页
+// @Tags         Admin.Comment.Journal
+// @Produce      json
+// @Param        journalID  path     int  true  "日志ID"  example(1)
+// @Param        page       query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.Comment}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/{journalID}/tree_view [get]
 func (j *JournalCommentHandler) ListJournalCommentAsTree(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -98,6 +137,18 @@ func (j *JournalCommentHandler) ListJournalCommentAsTree(ctx *gin.Context) (inte
 	return dto.NewPage(commentVOs, totalCount, page), nil
 }
 
+// ListJournalCommentWithParent godoc
+// @Summary      带父评论的日志评论列表
+// @Description  根据日志ID返回评论列表(每条带父评论信息),支持分页
+// @Tags         Admin.Comment.Journal
+// @Produce      json
+// @Param        journalID  path     int  true  "日志ID"  example(1)
+// @Param        page       query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.CommentWithParent}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/{journalID}/list_view [get]
 func (j *JournalCommentHandler) ListJournalCommentWithParent(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -131,6 +182,18 @@ func (j *JournalCommentHandler) ListJournalCommentWithParent(ctx *gin.Context) (
 	return dto.NewPage(commentsWithParent, totalCount, page), nil
 }
 
+// CreateJournalComment godoc
+// @Summary      创建日志评论
+// @Description  在指定日志下创建一条评论
+// @Tags         Admin.Comment.Journal
+// @Accept       json
+// @Produce      json
+// @Param        comment  body     param.AdminComment  true  "评论参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments [post]
 func (j *JournalCommentHandler) CreateJournalComment(ctx *gin.Context) (interface{}, error) {
 	var commentParam *param.AdminComment
 	err := ctx.ShouldBindJSON(&commentParam)
@@ -166,6 +229,18 @@ func (j *JournalCommentHandler) CreateJournalComment(ctx *gin.Context) (interfac
 	return j.JournalCommentAssembler.ConvertToDTO(ctx, comment)
 }
 
+// UpdateJournalCommentStatus godoc
+// @Summary      更新日志评论状态
+// @Description  根据评论ID和状态更新评论状态
+// @Tags         Admin.Comment.Journal
+// @Produce      json
+// @Param        commentID  path     int     true  "评论ID"  example(1)
+// @Param        status     path     string  true  "状态值"  example(published)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/{commentID}/status/{status} [put]
 func (j *JournalCommentHandler) UpdateJournalCommentStatus(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -182,6 +257,19 @@ func (j *JournalCommentHandler) UpdateJournalCommentStatus(ctx *gin.Context) (in
 	return j.JournalCommentService.UpdateStatus(ctx, commentID, status)
 }
 
+// UpdateJournalComment godoc
+// @Summary      更新日志评论
+// @Description  根据评论ID更新评论内容
+// @Tags         Admin.Comment.Journal
+// @Accept       json
+// @Produce      json
+// @Param        commentID  path     int            true  "评论ID"  example(1)
+// @Param        comment    body     param.Comment  true  "评论参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/{commentID} [put]
 func (j *JournalCommentHandler) UpdateJournalComment(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -209,6 +297,19 @@ func (j *JournalCommentHandler) UpdateJournalComment(ctx *gin.Context) (interfac
 	return j.JournalCommentAssembler.ConvertToDTO(ctx, comment)
 }
 
+// UpdateJournalStatusBatch godoc
+// @Summary      批量更新日志评论状态
+// @Description  根据评论ID列表和状态批量更新评论状态
+// @Tags         Admin.Comment.Journal
+// @Accept       json
+// @Produce      json
+// @Param        status  path     int     true  "状态值"  example(0)
+// @Param        ids     body     []int   true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/status/{status} [put]
 func (j *JournalCommentHandler) UpdateJournalStatusBatch(ctx *gin.Context) (interface{}, error) {
 	status, err := util.ParamInt32(ctx, "status")
 	if err != nil {
@@ -227,6 +328,17 @@ func (j *JournalCommentHandler) UpdateJournalStatusBatch(ctx *gin.Context) (inte
 	return j.JournalCommentAssembler.ConvertToDTOList(ctx, comments)
 }
 
+// DeleteJournalComment godoc
+// @Summary      删除日志评论
+// @Description  根据评论ID删除指定日志评论
+// @Tags         Admin.Comment.Journal
+// @Produce      json
+// @Param        commentID  path     int  true  "评论ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments/{commentID} [delete]
 func (j *JournalCommentHandler) DeleteJournalComment(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -235,6 +347,18 @@ func (j *JournalCommentHandler) DeleteJournalComment(ctx *gin.Context) (interfac
 	return nil, j.JournalCommentService.Delete(ctx, commentID)
 }
 
+// DeleteJournalCommentBatch godoc
+// @Summary      批量删除日志评论
+// @Description  根据评论ID列表批量删除日志评论
+// @Tags         Admin.Comment.Journal
+// @Accept       json
+// @Produce      json
+// @Param        ids  body     []int  true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/journals/comments [delete]
 func (j *JournalCommentHandler) DeleteJournalCommentBatch(ctx *gin.Context) (interface{}, error) {
 	ids := make([]int32, 0)
 	err := ctx.ShouldBindJSON(&ids)

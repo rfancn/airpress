@@ -49,6 +49,22 @@ func NewSheetCommentHandler(
 	}
 }
 
+// ListSheetComment godoc
+// @Summary      分页查询页面评论列表
+// @Description  支持按关键词、状态过滤,支持排序与分页
+// @Tags         Admin.Comment.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        page      query     int        false  "页码(从0开始)"  example(0)
+// @Param        size      query     int        false  "每页数量"        example(10)
+// @Param        sort      query     []string   false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Param        keyword   query     string     false  "评论关键词"
+// @Param        status    query     []string   false  "状态过滤"      collectionFormat(multi)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.SheetCommentWithSheet}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments [get]
 func (s *SheetCommentHandler) ListSheetComment(ctx *gin.Context) (interface{}, error) {
 	var commentQuery param.CommentQuery
 	err := ctx.ShouldBindWith(&commentQuery, binding.CustomFormBinding)
@@ -69,6 +85,17 @@ func (s *SheetCommentHandler) ListSheetComment(ctx *gin.Context) (interface{}, e
 	return dto.NewPage(commentDTOs, totalCount, commentQuery.Page), nil
 }
 
+// ListSheetCommentLatest godoc
+// @Summary      查询最新页面评论
+// @Description  返回指定数量的最新页面评论列表
+// @Tags         Admin.Comment.Sheet
+// @Produce      json
+// @Param        top  query     int  false  "返回数量"  example(10)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]vo.SheetCommentWithSheet}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/latest [get]
 func (s *SheetCommentHandler) ListSheetCommentLatest(ctx *gin.Context) (interface{}, error) {
 	top, err := util.MustGetQueryInt32(ctx, "top")
 	if err != nil {
@@ -85,6 +112,18 @@ func (s *SheetCommentHandler) ListSheetCommentLatest(ctx *gin.Context) (interfac
 	return s.ConvertToWithSheet(ctx, comments)
 }
 
+// ListSheetCommentAsTree godoc
+// @Summary      树形页面评论列表
+// @Description  根据页面ID返回评论的树形结构,支持分页
+// @Tags         Admin.Comment.Sheet
+// @Produce      json
+// @Param        sheetID  path     int  true  "页面ID"  example(1)
+// @Param        page     query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.Comment}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/{sheetID}/tree_view [get]
 func (s *SheetCommentHandler) ListSheetCommentAsTree(ctx *gin.Context) (interface{}, error) {
 	postID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -111,6 +150,18 @@ func (s *SheetCommentHandler) ListSheetCommentAsTree(ctx *gin.Context) (interfac
 	return dto.NewPage(commentVOs, totalCount, page), nil
 }
 
+// ListSheetCommentWithParent godoc
+// @Summary      带父评论的页面评论列表
+// @Description  根据页面ID返回评论列表(每条带父评论信息),支持分页
+// @Tags         Admin.Comment.Sheet
+// @Produce      json
+// @Param        sheetID  path     int  true  "页面ID"  example(1)
+// @Param        page     query     int  false  "页码(从0开始)"  example(0)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.CommentWithParent}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/{sheetID}/list_view [get]
 func (s *SheetCommentHandler) ListSheetCommentWithParent(ctx *gin.Context) (interface{}, error) {
 	postID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -143,6 +194,18 @@ func (s *SheetCommentHandler) ListSheetCommentWithParent(ctx *gin.Context) (inte
 	return dto.NewPage(commentsWithParent, totalCount, page), nil
 }
 
+// CreateSheetComment godoc
+// @Summary      创建页面评论
+// @Description  在指定页面下创建一条评论
+// @Tags         Admin.Comment.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        comment  body     param.AdminComment  true  "评论参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments [post]
 func (s *SheetCommentHandler) CreateSheetComment(ctx *gin.Context) (interface{}, error) {
 	var commentParam *param.AdminComment
 	err := ctx.ShouldBindJSON(&commentParam)
@@ -178,6 +241,18 @@ func (s *SheetCommentHandler) CreateSheetComment(ctx *gin.Context) (interface{},
 	return s.SheetCommentAssembler.ConvertToDTO(ctx, comment)
 }
 
+// UpdateSheetCommentStatus godoc
+// @Summary      更新页面评论状态
+// @Description  根据评论ID和状态更新评论状态
+// @Tags         Admin.Comment.Sheet
+// @Produce      json
+// @Param        commentID  path     int     true  "评论ID"  example(1)
+// @Param        status     path     string  true  "状态值"  example(published)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/{commentID}/status/{status} [put]
 func (s *SheetCommentHandler) UpdateSheetCommentStatus(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -194,6 +269,19 @@ func (s *SheetCommentHandler) UpdateSheetCommentStatus(ctx *gin.Context) (interf
 	return s.SheetCommentService.UpdateStatus(ctx, commentID, status)
 }
 
+// UpdateSheetCommentStatusBatch godoc
+// @Summary      批量更新页面评论状态
+// @Description  根据评论ID列表和状态批量更新评论状态
+// @Tags         Admin.Comment.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        status  path     int     true  "状态值"  example(0)
+// @Param        ids     body     []int   true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/status/{status} [put]
 func (s *SheetCommentHandler) UpdateSheetCommentStatusBatch(ctx *gin.Context) (interface{}, error) {
 	status, err := util.ParamInt32(ctx, "status")
 	if err != nil {
@@ -212,6 +300,17 @@ func (s *SheetCommentHandler) UpdateSheetCommentStatusBatch(ctx *gin.Context) (i
 	return s.SheetCommentAssembler.ConvertToDTOList(ctx, comments)
 }
 
+// DeleteSheetComment godoc
+// @Summary      删除页面评论
+// @Description  根据评论ID删除指定页面评论
+// @Tags         Admin.Comment.Sheet
+// @Produce      json
+// @Param        commentID  path     int  true  "评论ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments/{commentID} [delete]
 func (s *SheetCommentHandler) DeleteSheetComment(ctx *gin.Context) (interface{}, error) {
 	commentID, err := util.ParamInt32(ctx, "commentID")
 	if err != nil {
@@ -220,6 +319,18 @@ func (s *SheetCommentHandler) DeleteSheetComment(ctx *gin.Context) (interface{},
 	return nil, s.SheetCommentService.Delete(ctx, commentID)
 }
 
+// DeleteSheetCommentBatch godoc
+// @Summary      批量删除页面评论
+// @Description  根据评论ID列表批量删除页面评论
+// @Tags         Admin.Comment.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        ids  body     []int  true  "评论ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/comments [delete]
 func (s *SheetCommentHandler) DeleteSheetCommentBatch(ctx *gin.Context) (interface{}, error) {
 	ids := make([]int32, 0)
 	err := ctx.ShouldBindJSON(&ids)

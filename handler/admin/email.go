@@ -18,6 +18,18 @@ func NewEmailHandler(emailService service.EmailService) *EmailHandler {
 	}
 }
 
+// Test godoc
+// @Summary      发送测试邮件
+// @Description  使用指定参数发送一封测试邮件
+// @Tags         Admin.Email
+// @Accept       json
+// @Produce      json
+// @Param        testEmail  body     param.TestEmail  true  "测试邮件参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/mails/test [post]
 func (e *EmailHandler) Test(ctx *gin.Context) (interface{}, error) {
 	p := &param.TestEmail{}
 	if err := ctx.ShouldBindJSON(p); err != nil {

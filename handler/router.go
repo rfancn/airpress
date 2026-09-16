@@ -2,11 +2,14 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"path/filepath"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -14,6 +17,7 @@ import (
 	"github.com/rfancn/airpress/config"
 	"github.com/rfancn/airpress/consts"
 	"github.com/rfancn/airpress/dal"
+	"github.com/rfancn/airpress/docs"
 	"github.com/rfancn/airpress/handler/middleware"
 )
 
@@ -33,6 +37,15 @@ func (s *Server) RegisterRouters() {
 	{
 		router.GET("/ping", func(ctx *gin.Context) {
 			_, _ = ctx.Writer.Write([]byte("pong"))
+		})
+		// 注册 Swagger UI,访问 /swagger/index.html 查看自动生成的 API 文档
+		// 文档由 swag 通过解析 handler 上的 @Summary/@Router 等注释生成
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		// 暴露 OpenAPI 3.0 规范文档(原始 JSON,无 UI)
+		// 供代码生成器(oapi-codegen / openapi-generator)、Postman、Redoc/RapiDoc/Scalar 等工具消费
+		// 文档由 scripts/gen-docs.ps1 串联 swag init + swagger2openapi 生成,通过 //go:embed 内嵌进二进制
+		router.GET("/openapi.json", func(ctx *gin.Context) {
+			ctx.Data(http.StatusOK, "application/json", docs.OpenAPI3Spec)
 		})
 		{
 			staticRouter := router.Group("/")

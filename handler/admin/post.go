@@ -31,6 +31,25 @@ func NewPostHandler(postService service.PostService, postAssembler assembler.Pos
 	}
 }
 
+// ListPosts godoc
+// @Summary      分页查询文章列表
+// @Description  支持按关键词、状态、分类、标签过滤,支持排序与分页
+// @Tags         Admin.Post
+// @Accept       json
+// @Produce      json
+// @Param        page        query     int      false  "页码(从0开始)"          example(0)
+// @Param        size        query     int      false  "每页数量"              example(10)
+// @Param        sort        query     []string false  "排序字段,如 createTime,desc" collectionFormat(multi)
+// @Param        keyword     query     string   false  "标题关键词"
+// @Param        statuses    query     []int    false  "状态过滤"            collectionFormat(multi)
+// @Param        categoryId  query     int      false  "分类ID"
+// @Param        tagId       query     int      false  "标签ID"
+// @Param        more        query     bool     false  "true返回详情VO,false返回精简DTO"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]dto.Post}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts [get]
 func (p *PostHandler) ListPosts(ctx *gin.Context) (interface{}, error) {
 	postQuery := param.PostQuery{}
 	err := ctx.ShouldBindWith(&postQuery, binding.CustomFormBinding)
@@ -134,6 +153,17 @@ func (p *PostHandler) ListPostsByStatus(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(postDTOs, totalCount, postQuery.Page), nil
 }
 
+// GetByPostID godoc
+// @Summary      根据文章ID获取详情
+// @Description  返回文章详情,包含正文、评论数等
+// @Tags         Admin.Post
+// @Produce      json
+// @Param        postID  path     int  true  "文章ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.PostDetailVO}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/{postID} [get]
 func (p *PostHandler) GetByPostID(ctx *gin.Context) (interface{}, error) {
 	postIDStr := ctx.Param("postID")
 	postID, err := strconv.ParseInt(postIDStr, 10, 32)
@@ -151,6 +181,18 @@ func (p *PostHandler) GetByPostID(ctx *gin.Context) (interface{}, error) {
 	return postDetailVO, nil
 }
 
+// CreatePost godoc
+// @Summary      创建文章
+// @Description  创建一篇新文章,返回创建后的详情
+// @Tags         Admin.Post
+// @Accept       json
+// @Produce      json
+// @Param        post  body     param.Post  true  "文章参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.PostDetailVO}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts [post]
 func (p *PostHandler) CreatePost(ctx *gin.Context) (interface{}, error) {
 	var postParam param.Post
 	err := ctx.ShouldBindJSON(&postParam)
@@ -169,6 +211,19 @@ func (p *PostHandler) CreatePost(ctx *gin.Context) (interface{}, error) {
 	return p.PostAssembler.ConvertToDetailVO(ctx, post)
 }
 
+// UpdatePost godoc
+// @Summary      更新文章
+// @Description  根据文章ID更新文章内容
+// @Tags         Admin.Post
+// @Accept       json
+// @Produce      json
+// @Param        postID  path     int          true  "文章ID"  example(1)
+// @Param        post    body     param.Post   true  "文章参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.PostDetailVO}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/{postID} [put]
 func (p *PostHandler) UpdatePost(ctx *gin.Context) (interface{}, error) {
 	var postParam param.Post
 	err := ctx.ShouldBindJSON(&postParam)
@@ -255,6 +310,17 @@ func (p *PostHandler) UpdatePostDraft(ctx *gin.Context) (interface{}, error) {
 	return p.PostAssembler.ConvertToDetailDTO(ctx, post)
 }
 
+// DeletePost godoc
+// @Summary      删除文章
+// @Description  根据文章ID删除指定文章
+// @Tags         Admin.Post
+// @Produce      json
+// @Param        postID  path     int  true  "文章ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/posts/{postID} [delete]
 func (p *PostHandler) DeletePost(ctx *gin.Context) (interface{}, error) {
 	postID, err := util.ParamInt32(ctx, "postID")
 	if err != nil {
