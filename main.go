@@ -20,6 +20,18 @@ import (
 
 var eventBus event.Bus
 
+// @title           AirPress API
+// @version         1.0
+// @description     AirPress 博客系统后端 API 文档,通过 swag 注释驱动自动生成。
+// @description     包含后台管理(/api/admin)与前台内容(/api/content)两组接口。
+// @host            localhost:8080
+// @BasePath        /api
+// @securityDefinitions.apikey AdminApiKey
+// @in header
+// @name Admin-Authorization
+// @securityDefinitions.apikey ContentApiKey
+// @in header
+// @name Content-Authorization
 func main() {
 	app := InitApp()
 

@@ -22,6 +22,17 @@ func NewInstallHandler(installService service.InstallService) *InstallHandler {
 	}
 }
 
+// InstallBlog godoc
+// @Summary      安装博客系统
+// @Description  使用初始管理员信息等参数初始化博客系统,无需鉴权
+// @Tags         Admin.Install
+// @Accept       json
+// @Produce      json
+// @Param        install  body     param.Install  true  "安装参数"
+// @Success      200  {object}  dto.BaseDTO{data=string}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/installations [post]
 func (i *InstallHandler) InstallBlog(ctx *gin.Context) (interface{}, error) {
 	var installParam param.Install
 	err := ctx.ShouldBindJSON(&installParam)

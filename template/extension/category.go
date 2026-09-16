@@ -80,7 +80,7 @@ func (ce *categoryExtension) addGetCategoryBySlugFunc() {
 			return nil, err
 		}
 		for _, category := range categories {
-			if category.CategoryDTO != nil && category.CategoryDTO.Slug == slug {
+			if category.CategoryDTO != nil && category.Slug == slug {
 				return category, nil
 			}
 		}

@@ -24,6 +24,18 @@ func NewPhotoHandler(photoService service.PhotoService) *PhotoHandler {
 	}
 }
 
+// ListPhoto godoc
+// @Summary      查询最新照片
+// @Description  返回所有照片列表(按 createTime desc),支持排序覆盖
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        sort  query     []string  false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Photo}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/latest [get]
 func (p *PhotoHandler) ListPhoto(ctx *gin.Context) (interface{}, error) {
 	sort := param.Sort{}
 	err := ctx.ShouldBindQuery(&sort)
@@ -40,6 +52,20 @@ func (p *PhotoHandler) ListPhoto(ctx *gin.Context) (interface{}, error) {
 	return p.PhotoService.ConvertToDTOs(ctx, photos), nil
 }
 
+// PagePhotos godoc
+// @Summary      分页查询照片
+// @Description  支持排序与分页的照片查询
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        page  query     int        false  "页码(从0开始)"  example(0)
+// @Param        size  query     int        false  "每页数量"        example(10)
+// @Param        sort  query     []string   false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]dto.Photo}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos [get]
 func (p *PhotoHandler) PagePhotos(ctx *gin.Context) (interface{}, error) {
 	type Param struct {
 		param.Page
@@ -60,6 +86,17 @@ func (p *PhotoHandler) PagePhotos(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(p.PhotoService.ConvertToDTOs(ctx, photos), totalCount, param.Page), nil
 }
 
+// GetPhotoByID godoc
+// @Summary      根据ID获取照片
+// @Description  返回指定 ID 的照片详情
+// @Tags         Admin.Photo
+// @Produce      json
+// @Param        id  path     int  true  "照片ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Photo}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/{id} [get]
 func (p *PhotoHandler) GetPhotoByID(ctx *gin.Context) (interface{}, error) {
 	id, err := util.ParamInt32(ctx, "id")
 	if err != nil {
@@ -72,6 +109,18 @@ func (p *PhotoHandler) GetPhotoByID(ctx *gin.Context) (interface{}, error) {
 	return p.PhotoService.ConvertToDTO(ctx, photo), nil
 }
 
+// CreatePhoto godoc
+// @Summary      创建照片
+// @Description  创建一个新照片,返回创建后的详情
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        photo  body     param.Photo  true  "照片参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Photo}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos [post]
 func (p *PhotoHandler) CreatePhoto(ctx *gin.Context) (interface{}, error) {
 	photoParam := &param.Photo{}
 	err := ctx.ShouldBindJSON(photoParam)
@@ -89,6 +138,18 @@ func (p *PhotoHandler) CreatePhoto(ctx *gin.Context) (interface{}, error) {
 	return p.PhotoService.ConvertToDTO(ctx, photo), nil
 }
 
+// CreatePhotoBatch godoc
+// @Summary      批量创建照片
+// @Description  根据照片参数列表批量创建照片
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        photos  body     []param.Photo  true  "照片参数列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Photo}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/batch [post]
 func (p *PhotoHandler) CreatePhotoBatch(ctx *gin.Context) (interface{}, error) {
 	photosParam := make([]*param.Photo, 0)
 	err := ctx.ShouldBindJSON(&photosParam)
@@ -106,6 +167,19 @@ func (p *PhotoHandler) CreatePhotoBatch(ctx *gin.Context) (interface{}, error) {
 	return p.PhotoService.ConvertToDTOs(ctx, photos), nil
 }
 
+// UpdatePhoto godoc
+// @Summary      更新照片
+// @Description  根据照片ID更新照片信息
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        id     path     int          true  "照片ID"  example(1)
+// @Param        photo  body     param.Photo  true  "照片参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Photo}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/{id} [put]
 func (p *PhotoHandler) UpdatePhoto(ctx *gin.Context) (interface{}, error) {
 	id, err := util.ParamInt32(ctx, "id")
 	if err != nil {
@@ -135,6 +209,18 @@ func (p *PhotoHandler) DeletePhoto(ctx *gin.Context) (interface{}, error) {
 	return nil, p.PhotoService.Delete(ctx, id)
 }
 
+// DeletePhotoBatch godoc
+// @Summary      批量删除照片
+// @Description  根据照片ID列表批量删除照片
+// @Tags         Admin.Photo
+// @Accept       json
+// @Produce      json
+// @Param        ids  body     []int  true  "照片ID列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/batch [delete]
 func (p *PhotoHandler) DeletePhotoBatch(ctx *gin.Context) (interface{}, error) {
 	photosParam := make([]int32, 0)
 	err := ctx.ShouldBindJSON(&photosParam)
@@ -150,6 +236,16 @@ func (p *PhotoHandler) DeletePhotoBatch(ctx *gin.Context) (interface{}, error) {
 	return nil, nil
 }
 
+// ListPhotoTeams godoc
+// @Summary      查询照片分组
+// @Description  返回所有照片的分组(team)列表
+// @Tags         Admin.Photo
+// @Produce      json
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]string}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/photos/teams [get]
 func (p *PhotoHandler) ListPhotoTeams(ctx *gin.Context) (interface{}, error) {
 	return p.PhotoService.ListTeams(ctx)
 }

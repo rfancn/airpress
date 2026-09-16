@@ -20,10 +20,32 @@ func NewOptionHandler(optionService service.OptionService) *OptionHandler {
 	}
 }
 
+// ListAllOptions godoc
+// @Summary      查询所有选项
+// @Description  返回系统所有配置选项列表
+// @Tags         Admin.Option
+// @Produce      json
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Option}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/options [get]
 func (o *OptionHandler) ListAllOptions(ctx *gin.Context) (interface{}, error) {
 	return o.OptionService.ListAllOption(ctx)
 }
 
+// SaveOption godoc
+// @Summary      保存选项
+// @Description  批量保存配置选项
+// @Tags         Admin.Option
+// @Accept       json
+// @Produce      json
+// @Param        options  body     []param.Option  true  "选项列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/options/saving [post]
 func (o *OptionHandler) SaveOption(ctx *gin.Context) (interface{}, error) {
 	optionParams := make([]*param.Option, 0)
 	err := ctx.ShouldBindJSON(&optionParams)
@@ -37,6 +59,16 @@ func (o *OptionHandler) SaveOption(ctx *gin.Context) (interface{}, error) {
 	return nil, o.OptionService.Save(ctx, optionMap)
 }
 
+// ListAllOptionsAsMap godoc
+// @Summary      以 Map 形式查询所有选项
+// @Description  返回 key-value 形式的所有配置选项
+// @Tags         Admin.Option
+// @Produce      json
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=map[string]interface{}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/options/map_view [get]
 func (o *OptionHandler) ListAllOptionsAsMap(ctx *gin.Context) (interface{}, error) {
 	options, err := o.OptionService.ListAllOption(ctx)
 	if err != nil {
@@ -49,6 +81,18 @@ func (o *OptionHandler) ListAllOptionsAsMap(ctx *gin.Context) (interface{}, erro
 	return result, nil
 }
 
+// ListAllOptionsAsMapWithKey godoc
+// @Summary      按 key 列表查询选项 Map
+// @Description  根据传入的 key 列表返回对应 key-value 形式的选项
+// @Tags         Admin.Option
+// @Accept       json
+// @Produce      json
+// @Param        keys  body     []string  true  "选项 key 列表"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=map[string]interface{}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/options/map_view/keys [post]
 func (o *OptionHandler) ListAllOptionsAsMapWithKey(ctx *gin.Context) (interface{}, error) {
 	keys := make([]string, 0)
 	err := ctx.ShouldBindJSON(&keys)
@@ -72,6 +116,18 @@ func (o *OptionHandler) ListAllOptionsAsMapWithKey(ctx *gin.Context) (interface{
 	return result, nil
 }
 
+// SaveOptionWithMap godoc
+// @Summary      以 Map 形式保存选项
+// @Description  根据 key-value 映射批量保存配置选项
+// @Tags         Admin.Option
+// @Accept       json
+// @Produce      json
+// @Param        options  body     map[string]interface{}  true  "选项 key-value 映射"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/options/map_view/saving [post]
 func (o *OptionHandler) SaveOptionWithMap(ctx *gin.Context) (interface{}, error) {
 	optionMap := make(map[string]interface{}, 0)
 	err := ctx.ShouldBind(&optionMap)

@@ -132,7 +132,7 @@ func TestLoaderAbs(t *testing.T) {
 // TestExecuteTemplateEscaping 验证端到端渲染：默认转义、|safe 直出、now 注入。
 func TestExecuteTemplateEscaping(t *testing.T) {
 	tpl := NewTemplate(zap.NewNop(), nil)
-	defer tpl.watcher.Close()
+	defer func() { _ = tpl.watcher.Close() }()
 
 	commonDir := filepath.Join("..", "resources", "template", "common")
 	tpl.Mount("common", commonDir)

@@ -31,6 +31,17 @@ func NewSheetHandler(sheetService service.SheetService, postService service.Post
 	}
 }
 
+// GetSheetByID godoc
+// @Summary      根据页面ID获取详情
+// @Description  返回页面详情,包含正文、评论数等
+// @Tags         Admin.Sheet
+// @Produce      json
+// @Param        sheetID  path     int  true  "页面ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.SheetDetail}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/{sheetID} [get]
 func (s *SheetHandler) GetSheetByID(ctx *gin.Context) (interface{}, error) {
 	sheetID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -43,6 +54,20 @@ func (s *SheetHandler) GetSheetByID(ctx *gin.Context) (interface{}, error) {
 	return s.SheetAssembler.ConvertToDetailVO(ctx, sheet)
 }
 
+// ListSheet godoc
+// @Summary      分页查询页面列表
+// @Description  支持分页查询所有页面
+// @Tags         Admin.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        page  query     int        false  "页码(从0开始)"  example(0)
+// @Param        size  query     int        false  "每页数量"        example(10)
+// @Param        sort  query     string     false  "排序字段"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.SheetList}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets [get]
 func (s *SheetHandler) ListSheet(ctx *gin.Context) (interface{}, error) {
 	type SheetParam struct {
 		param.Page
@@ -64,10 +89,32 @@ func (s *SheetHandler) ListSheet(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(sheetVOs, totalCount, sheetParam.Page), nil
 }
 
+// IndependentSheets godoc
+// @Summary      查询独立页面列表
+// @Description  返回所有独立页面(sheets)列表
+// @Tags         Admin.Sheet
+// @Produce      json
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.IndependentSheet}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/independent [get]
 func (s *SheetHandler) IndependentSheets(ctx *gin.Context) (interface{}, error) {
 	return s.SheetService.ListIndependentSheets(ctx)
 }
 
+// CreateSheet godoc
+// @Summary      创建页面
+// @Description  创建一个新页面,返回创建后的详情
+// @Tags         Admin.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        sheet  body     param.Sheet  true  "页面参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.SheetDetail}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets [post]
 func (s *SheetHandler) CreateSheet(ctx *gin.Context) (interface{}, error) {
 	var sheetParam param.Sheet
 	err := ctx.ShouldBindJSON(&sheetParam)
@@ -89,6 +136,19 @@ func (s *SheetHandler) CreateSheet(ctx *gin.Context) (interface{}, error) {
 	return sheetDetailVO, nil
 }
 
+// UpdateSheet godoc
+// @Summary      更新页面
+// @Description  根据页面ID更新页面内容
+// @Tags         Admin.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        sheetID  path     int           true  "页面ID"  example(1)
+// @Param        sheet    body     param.Sheet   true  "页面参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.SheetDetail}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/{sheetID} [put]
 func (s *SheetHandler) UpdateSheet(ctx *gin.Context) (interface{}, error) {
 	var sheetParam param.Sheet
 	err := ctx.ShouldBindJSON(&sheetParam)
@@ -111,6 +171,18 @@ func (s *SheetHandler) UpdateSheet(ctx *gin.Context) (interface{}, error) {
 	return postDetailVO, nil
 }
 
+// UpdateSheetStatus godoc
+// @Summary      更新页面状态
+// @Description  根据页面ID和状态更新页面状态
+// @Tags         Admin.Sheet
+// @Produce      json
+// @Param        sheetID  path     int     true  "页面ID"  example(1)
+// @Param        status    path     string  true  "状态值"  example(published)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=vo.SheetDetail}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/{sheetID}/{status} [put]
 func (s *SheetHandler) UpdateSheetStatus(ctx *gin.Context) (interface{}, error) {
 	sheetID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -130,6 +202,19 @@ func (s *SheetHandler) UpdateSheetStatus(ctx *gin.Context) (interface{}, error) 
 	return s.SheetService.UpdateStatus(ctx, sheetID, status)
 }
 
+// UpdateSheetDraft godoc
+// @Summary      更新页面草稿内容
+// @Description  根据页面ID更新页面的草稿内容(正文/原始内容)
+// @Tags         Admin.Sheet
+// @Accept       json
+// @Produce      json
+// @Param        sheetID       path     int               true  "页面ID"  example(1)
+// @Param        postContent   body     param.PostContent  true  "草稿内容参数"
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO{data=dto.PostDetail}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/{sheetID}/status/draft/content [put]
 func (s *SheetHandler) UpdateSheetDraft(ctx *gin.Context) (interface{}, error) {
 	sheetID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -147,6 +232,17 @@ func (s *SheetHandler) UpdateSheetDraft(ctx *gin.Context) (interface{}, error) {
 	return s.SheetAssembler.ConvertToDetailDTO(ctx, post)
 }
 
+// DeleteSheet godoc
+// @Summary      删除页面
+// @Description  根据页面ID删除指定页面
+// @Tags         Admin.Sheet
+// @Produce      json
+// @Param        sheetID  path     int  true  "页面ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /admin/sheets/{sheetID} [delete]
 func (s *SheetHandler) DeleteSheet(ctx *gin.Context) (interface{}, error) {
 	sheetID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {
@@ -155,6 +251,17 @@ func (s *SheetHandler) DeleteSheet(ctx *gin.Context) (interface{}, error) {
 	return nil, s.SheetService.Delete(ctx, sheetID)
 }
 
+// PreviewSheet godoc
+// @Summary      预览页面
+// @Description  根据页面ID生成预览并返回预览路径
+// @Tags         Admin.Sheet
+// @Produce      plain
+// @Param        sheetID  path     int  true  "页面ID"  example(1)
+// @Security     AdminApiKey
+// @Success      200  {string}  string
+// @Failure      400  {string}  string
+// @Failure      500  {string}  string
+// @Router       /admin/sheets/preview/{sheetID} [get]
 func (s *SheetHandler) PreviewSheet(ctx *gin.Context) {
 	sheetID, err := util.ParamInt32(ctx, "sheetID")
 	if err != nil {

@@ -38,6 +38,19 @@ func NewJournalHandler(
 	}
 }
 
+// ListJournal godoc
+// @Summary      分页查询日志列表
+// @Description  返回公开类型的日志,按创建时间倒序分页
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        page     query     int       false  "页码(从0开始)"          example(0)
+// @Param        size     query     int       false  "每页数量"              example(10)
+// @Param        sort     query     []string  false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Param        keyword  query     string    false  "日志关键词"
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]dto.JournalWithComment}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals [get]
 func (j *JournalHandler) ListJournal(ctx *gin.Context) (interface{}, error) {
 	var journalQuery param.JournalQuery
 	err := ctx.ShouldBindWith(&journalQuery, binding.CustomFormBinding)
@@ -59,6 +72,16 @@ func (j *JournalHandler) ListJournal(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(journalDTOs, totalCount, journalQuery.Page), nil
 }
 
+// GetJournal godoc
+// @Summary      根据日志ID获取详情
+// @Description  返回指定日志的详情(带评论数)
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int  true  "日志ID"  example(1)
+// @Success      200  {object}  dto.BaseDTO{data=dto.JournalWithComment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID} [get]
 func (j *JournalHandler) GetJournal(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -78,6 +101,19 @@ func (j *JournalHandler) GetJournal(ctx *gin.Context) (interface{}, error) {
 	return journalDTOs[0], nil
 }
 
+// ListTopComment godoc
+// @Summary      查询日志的顶级评论
+// @Description  分页返回指定日志下已发布的顶级评论(带是否有子评论标识)
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int       true  "日志ID"  example(1)
+// @Param        page       query     int       false  "页码(从0开始)"          example(0)
+// @Param        size       query     int       false  "每页数量"              example(10)
+// @Param        sort       query     []string  false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.CommentWithHasChildren}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID}/comments/top_view [get]
 func (j *JournalHandler) ListTopComment(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -113,6 +149,17 @@ func (j *JournalHandler) ListTopComment(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(commenVOs, totalCount, commentQuery.Page), nil
 }
 
+// ListChildren godoc
+// @Summary      查询日志评论的子评论
+// @Description  返回指定日志下某条评论的全部子评论
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int  true  "日志ID"     example(1)
+// @Param        parentID   path     int  true  "父评论ID"  example(1)
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID}/comments/{parentID}/children [get]
 func (j *JournalHandler) ListChildren(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -130,6 +177,19 @@ func (j *JournalHandler) ListChildren(ctx *gin.Context) (interface{}, error) {
 	return j.JournalCommentAssembler.ConvertToDTOList(ctx, children)
 }
 
+// ListCommentTree godoc
+// @Summary      查询日志评论的树形视图
+// @Description  分页返回指定日志下全部已发布评论并按父子关系组织为树形结构
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int       true  "日志ID"  example(1)
+// @Param        page       query     int       false  "页码(从0开始)"          example(0)
+// @Param        size       query     int       false  "每页数量"              example(10)
+// @Param        sort       query     []string  false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.Comment}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID}/comments/tree_view [get]
 func (j *JournalHandler) ListCommentTree(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -165,6 +225,19 @@ func (j *JournalHandler) ListCommentTree(ctx *gin.Context) (interface{}, error) 
 	return dto.NewPage(commentVOs, total, commentQuery.Page), nil
 }
 
+// ListComment godoc
+// @Summary      查询日志评论的列表视图
+// @Description  分页返回指定日志下已发布评论,每条评论携带其父评论信息
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int       true  "日志ID"  example(1)
+// @Param        page       query     int       false  "页码(从0开始)"          example(0)
+// @Param        size       query     int       false  "每页数量"              example(10)
+// @Param        sort       query     []string  false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.CommentWithParent}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID}/comments/list_view [get]
 func (j *JournalHandler) ListComment(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {
@@ -200,6 +273,17 @@ func (j *JournalHandler) ListComment(ctx *gin.Context) (interface{}, error) {
 	return dto.NewPage(result, total, commentQuery.Page), nil
 }
 
+// CreateComment godoc
+// @Summary      创建日志评论
+// @Description  为指定日志创建一条新评论,作者、邮箱、内容会做 HTML 转义
+// @Tags         Content.Journal
+// @Accept       json
+// @Produce      json
+// @Param        comment  body     param.Comment  true  "评论参数"
+// @Success      200  {object}  dto.BaseDTO{data=dto.Comment}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/comments [post]
 func (j *JournalHandler) CreateComment(ctx *gin.Context) (interface{}, error) {
 	p := param.Comment{}
 	err := ctx.ShouldBindJSON(&p)
@@ -224,6 +308,16 @@ func (j *JournalHandler) CreateComment(ctx *gin.Context) (interface{}, error) {
 	return j.JournalCommentAssembler.ConvertToDTO(ctx, result)
 }
 
+// Like godoc
+// @Summary      日志点赞
+// @Description  为指定日志点赞,点赞数 +1
+// @Tags         Content.Journal
+// @Produce      json
+// @Param        journalID  path     int  true  "日志ID"  example(1)
+// @Success      200  {object}  dto.BaseDTO
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/journals/{journalID}/likes [post]
 func (j *JournalHandler) Like(ctx *gin.Context) (interface{}, error) {
 	journalID, err := util.ParamInt32(ctx, "journalID")
 	if err != nil {

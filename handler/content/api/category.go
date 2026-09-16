@@ -30,6 +30,17 @@ func NewCategoryHandler(postService service.PostService, categoryService service
 	}
 }
 
+// ListCategories godoc
+// @Summary      查询分类列表
+// @Description  返回所有分类,more=true 时返回带文章数的分类
+// @Tags         Content.Category
+// @Produce      json
+// @Param        sort  query     []string  false  "排序字段,如 updateTime,desc"  collectionFormat(multi)
+// @Param        more  query     bool      false  "true返回带文章数分类,false返回精简分类"
+// @Success      200  {object}  dto.BaseDTO{data=[]dto.CategoryDTO}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/categories [get]
 func (c *CategoryHandler) ListCategories(ctx *gin.Context) (interface{}, error) {
 	categoryQuery := struct {
 		*param.Sort
@@ -53,6 +64,21 @@ func (c *CategoryHandler) ListCategories(ctx *gin.Context) (interface{}, error) 
 	return c.CategoryService.ConvertToCategoryDTOs(ctx, categories)
 }
 
+// ListPosts godoc
+// @Summary      根据分类 slug 查询文章列表
+// @Description  分页返回指定分类下的已发布文章,如分类为私密需密码鉴权
+// @Tags         Content.Category
+// @Produce      json
+// @Param        slug      path     string    true   "分类 slug"
+// @Param        page      query     int      false  "页码(从0开始)"          example(0)
+// @Param        size      query     int      false  "每页数量"              example(10)
+// @Param        sort      query     []string false  "排序字段,如 createTime,desc"  collectionFormat(multi)
+// @Param        keyword   query     string   false  "标题关键词"
+// @Param        password  query     string   false  "私密分类访问密码"
+// @Success      200  {object}  dto.BaseDTO{data=dto.Page{content=[]vo.Post}}
+// @Failure      400  {object}  dto.BaseDTO
+// @Failure      500  {object}  dto.BaseDTO
+// @Router       /content/categories/{slug}/posts [get]
 func (c *CategoryHandler) ListPosts(ctx *gin.Context) (interface{}, error) {
 	slug, err := util.ParamString(ctx, "slug")
 	if err != nil {
